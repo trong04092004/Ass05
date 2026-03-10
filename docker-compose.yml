@@ -1,0 +1,372 @@
+services:
+  # ============================================================
+  # PostgreSQL Database (dùng chung 1 instance, nhiều databases)
+  # External port: 15432 (tránh conflict với các PostgreSQL khác)
+  # Internal port: 5432
+  # ============================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookstore_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bookstore_admin
+      POSTGRES_PASSWORD: bookstore_pass_2024
+      POSTGRES_DB: postgres # default db
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - bookstore-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U bookstore_admin -d postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ============================================================
+  # API Gateway (BFF + SSR Frontend)
+  # Port: 18000
+  # ============================================================
+  api-gateway:
+    build: ./api_gateway
+    container_name: bookstore_api_gateway
+    restart: unless-stopped
+    ports:
+      - "18000:8000"
+    environment:
+      - SECRET_KEY=bookstore-gateway-secret-key-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_gateway
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+      # Service URLs (internal Docker network)
+      - CUSTOMER_SERVICE_URL=http://customer-service:8000
+      - BOOK_SERVICE_URL=http://book-service:8000
+      - CART_SERVICE_URL=http://cart-service:8000
+      - ORDER_SERVICE_URL=http://order-service:8000
+      - PAY_SERVICE_URL=http://pay-service:8000
+      - SHIP_SERVICE_URL=http://ship-service:8000
+      - COMMENT_SERVICE_URL=http://comment-service:8000
+      - CATALOG_SERVICE_URL=http://catalog-service:8000
+      - STAFF_SERVICE_URL=http://staff-service:8000
+      - MANAGER_SERVICE_URL=http://manager-service:8000
+    volumes:
+      - ./api_gateway/templates:/app/templates
+      - ./api_gateway/app:/app/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      customer-service:
+        condition: service_started
+      book-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Customer Service (Authentication + Profile)
+  # Port: 18001 | DB: bookstore_micro_customer
+  # ============================================================
+  customer-service:
+    build: ./customer-service
+    container_name: bookstore_customer_svc
+    restart: unless-stopped
+    ports:
+      - "18001:8000"
+    environment:
+      - SECRET_KEY=bookstore-customer-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_customer
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+      - CART_SERVICE_URL=http://cart-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Book Service (Book Catalog CRUD)
+  # Port: 18002 | DB: bookstore_micro_book
+  # ============================================================
+  book-service:
+    build: ./book-service
+    container_name: bookstore_book_svc
+    restart: unless-stopped
+    ports:
+      - "18002:8000"
+    environment:
+      - SECRET_KEY=bookstore-book-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_book
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Cart Service (Shopping Cart)
+  # Port: 18003 | DB: bookstore_micro_cart
+  # ============================================================
+  cart-service:
+    build: ./cart-service
+    container_name: bookstore_cart_svc
+    restart: unless-stopped
+    ports:
+      - "18003:8000"
+    environment:
+      - SECRET_KEY=bookstore-cart-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_cart
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+      - BOOK_SERVICE_URL=http://book-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Order Service (Order Orchestrator)
+  # Port: 18004 | DB: bookstore_micro_order
+  # ============================================================
+  order-service:
+    build: ./order-service
+    container_name: bookstore_order_svc
+    restart: unless-stopped
+    ports:
+      - "18004:8000"
+    environment:
+      - SECRET_KEY=bookstore-order-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_order
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+      - CART_SERVICE_URL=http://cart-service:8000
+      - BOOK_SERVICE_URL=http://book-service:8000
+      - PAY_SERVICE_URL=http://pay-service:8000
+      - SHIP_SERVICE_URL=http://ship-service:8000
+      # [ASS6] SAGA_COORDINATOR_URL=http://saga-coordinator:8000
+      # [ASS6] EVENT_BUS_URL=amqp://rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Payment Service
+  # Port: 18005 | DB: bookstore_micro_payment
+  # ============================================================
+  pay-service:
+    build: ./pay-service
+    container_name: bookstore_pay_svc
+    restart: unless-stopped
+    ports:
+      - "18005:8000"
+    environment:
+      - SECRET_KEY=bookstore-pay-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_payment
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+      # [ASS6] PAYMENT_GATEWAY_URL=https://payment-provider.com/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Shipping Service
+  # Port: 18006 | DB: bookstore_micro_shipping
+  # ============================================================
+  ship-service:
+    build: ./ship-service
+    container_name: bookstore_ship_svc
+    restart: unless-stopped
+    ports:
+      - "18006:8000"
+    environment:
+      - SECRET_KEY=bookstore-ship-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_shipping
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+      # [ASS6] SHIPPING_PROVIDER_URL=https://shipping-provider.com/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Comment / Rating Service
+  # Port: 18007 | DB: bookstore_micro_rating
+  # ============================================================
+  comment-service:
+    build: ./comment-service
+    container_name: bookstore_comment_svc
+    restart: unless-stopped
+    ports:
+      - "18007:8000"
+    environment:
+      - SECRET_KEY=bookstore-comment-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_rating
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+      - BOOK_SERVICE_URL=http://book-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Catalog Service (Category, Author, Publisher)
+  # Port: 18008 | DB: bookstore_micro_catalog
+  # ============================================================
+  catalog-service:
+    build: ./catalog-service
+    container_name: bookstore_catalog_svc
+    restart: unless-stopped
+    ports:
+      - "18008:8000"
+    environment:
+      - SECRET_KEY=bookstore-catalog-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_catalog
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Staff Service (Staff Account Management)
+  # Port: 18009 | DB: bookstore_micro_staff
+  # ============================================================
+  staff-service:
+    build: ./staff-service
+    container_name: bookstore_staff_svc
+    restart: unless-stopped
+    ports:
+      - "18009:8000"
+    environment:
+      - SECRET_KEY=bookstore-staff-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_staff
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+
+  # ============================================================
+  # Manager Service (Promotions, Inventory, Coupons)
+  # Port: 18010 | DB: bookstore_micro_manager
+  # ============================================================
+  manager-service:
+    build: ./manager-service
+    container_name: bookstore_manager_svc
+    restart: unless-stopped
+    ports:
+      - "18010:8000"
+    environment:
+      - SECRET_KEY=bookstore-manager-secret-2024
+      - DEBUG=True
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=bookstore_micro_manager
+      - DB_USER=bookstore_admin
+      - DB_PASSWORD=bookstore_pass_2024
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+  # ============================================================
+  # [PLACEHOLDER - Assignment 6] Recommender Service
+  # Port: 18011 | DB: bookstore_micro_recommender
+  # Uncomment khi cần triển khai
+  # ============================================================
+  # recommender-service:
+  #   build: ./recommender-service
+  #   container_name: bookstore_recommender_svc
+  #   ports:
+  #     - "18011:8000"
+  #   environment:
+  #     - DB_HOST=postgres
+  #     - DB_NAME=bookstore_micro_recommender
+  #     - DB_USER=bookstore_admin
+  #     - DB_PASSWORD=bookstore_pass_2024
+  #   networks:
+  #     - bookstore-network
+
+  # ============================================================
+  # [PLACEHOLDER - Assignment 6] JWT Auth Service
+  # Port: 18020
+  # ============================================================
+  # auth-service:
+  #   build: ./auth-service
+  #   ports:
+  #     - "18020:8000"
+  #   environment:
+  #     - JWT_SECRET_KEY=your-jwt-secret
+  #   networks:
+  #     - bookstore-network
+
+  # ============================================================
+  # [PLACEHOLDER - Assignment 6] Event Bus (RabbitMQ)
+  # Port: 15672 (management UI), 5672 (AMQP)
+  # ============================================================
+  # rabbitmq:
+  #   image: rabbitmq:3-management-alpine
+  #   ports:
+  #     - "15672:15672"
+  #     - "5672:5672"
+  #   networks:
+  #     - bookstore-network
+
+volumes:
+  postgres_data:
+    name: bookstore_postgres_data
+
+networks:
+  bookstore-network:
+    name: bookstore-network
+    driver: bridge

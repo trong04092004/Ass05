@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Nhập kho — Nhân viên{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">📦 Quản lý nhập kho</h1>
+
+    {% if success %}
+    <div class="alert alert-success">✅ {{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-error">⚠️ {{ error }}</div>
+    {% endif %}
+
+    <div style="display:grid;grid-template-columns:1fr 360px;gap:1.5rem;align-items:start">
+
+        <!-- Lịch sử nhập hàng -->
+        <div class="card">
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">
+                📋 Lịch sử nhập kho ({{ supply_orders|length }} phiếu)
+            </h3>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Sách</th>
+                            <th>Số lượng nhập</th>
+                            <th>Nhà cung cấp</th>
+                            <th>Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for so in supply_orders %}
+                        <tr>
+                            <td style="color:var(--muted);font-size:.78rem">{{ so.id }}</td>
+                            <td style="font-weight:500">
+                                {% for b in books %}
+                                {% if b.id|stringformat:"s" == so.book_id|stringformat:"s" %}
+                                {{ b.title }}
+                                {% endif %}
+                                {% endfor %}
+                                {% if not so.book_id %}—{% endif %}
+                            </td>
+                            <td>
+                                <span style="color:var(--green);font-weight:700;font-size:1rem">
+                                    +{{ so.quantity }}
+                                </span>
+                            </td>
+                            <td style="color:var(--muted)">{{ so.supplier|default:"—" }}</td>
+                            <td style="font-size:.78rem;color:var(--muted)">{{ so.note|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">
+                                Chưa có phiếu nhập kho nào
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Form tạo phiếu nhập -->
+        <div class="card">
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">📥 Tạo phiếu nhập kho</h3>
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Sách cần nhập <span style="color:var(--red)">*</span></label>
+                    <select name="book_id" required
+                        style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.65rem 1rem;border-radius:8px;width:100%;font-size:.88rem;outline:none">
+                        <option value="">— Chọn sách —</option>
+                        {% for b in books %}
+                        <option value="{{ b.id }}">
+                            {{ b.title }} (tồn: {{ b.stock }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Số lượng nhập <span style="color:var(--red)">*</span></label>
+                    <input type="number" name="quantity" min="1" placeholder="100" required>
+                </div>
+                <div class="form-group">
+                    <label>Nhà cung cấp</label>
+                    <input type="text" name="supplier" placeholder="NXB Kim Đồng">
+                </div>
+                <div class="form-group">
+                    <label>Ghi chú</label>
+                    <textarea name="note" rows="3" placeholder="Ghi chú thêm..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-success btn-block">📦 Tạo phiếu nhập</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

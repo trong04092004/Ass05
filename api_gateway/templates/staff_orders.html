@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Duyệt đơn hàng — Nhân viên{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">📦 Duyệt đơn hàng</h1>
+
+    {% if success %}
+    <div class="alert alert-success">✅ {{ success }}</div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-error">⚠️ {{ error }}</div>
+    {% endif %}
+
+    {% if orders %}
+    <div style="margin-bottom:1rem;font-size:.84rem;color:var(--muted)">
+        Tổng cộng: <strong style="color:var(--text)">{{ orders|length }}</strong> đơn hàng
+    </div>
+
+    <div style="overflow-x:auto">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã đơn</th>
+                    <th>Khách hàng</th>
+                    <th>Sản phẩm</th>
+                    <th>Tổng tiền</th>
+                    <th>Thanh toán</th>
+                    <th>Trạng thái</th>
+                    <th>Duyệt đơn</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td><strong>#{{ order.id }}</strong>
+                        <div style="font-size:.7rem;color:var(--muted)">
+                            {% if order.created_at %}{{ order.created_at|slice:":10" }}{% endif %}
+                        </div>
+                    </td>
+                    <td style="color:var(--muted)">KH #{{ order.customer_id }}</td>
+                    <td style="font-size:.78rem;color:var(--muted);max-width:200px">
+                        {% for item in order.items %}
+                        <span>{{ item.book_title|default:"Sách" }} ×{{ item.quantity }}</span>
+                        {% if not forloop.last %}, {% endif %}
+                        {% empty %}<span style="color:var(--muted)">—</span>
+                        {% endfor %}
+                    </td>
+                    <td style="color:var(--accent2);font-weight:700;white-space:nowrap">
+                        {{ order.total_amount|floatformat:0 }} đ
+                    </td>
+                    <td>
+                        {% if order.payment_method == 'cod' %}💵 COD
+                        {% elif order.payment_method == 'bank' %}🏦 Ngân hàng
+                        {% elif order.payment_method == 'card' %}💳 Thẻ
+                        {% else %}{{ order.payment_method|default:"—" }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if order.status == 'pending' %}
+                        <span class="status status-pending">⏳ Chờ duyệt</span>
+                        {% elif order.status == 'confirmed' %}
+                        <span class="status status-confirmed">✅ Đã xác nhận</span>
+                        {% elif order.status == 'shipping' %}
+                        <span class="status status-shipping">🚚 Đang giao</span>
+                        {% elif order.status == 'completed' %}
+                        <span class="status status-completed">🎉 Hoàn thành</span>
+                        {% elif order.status == 'cancelled' %}
+                        <span class="status status-cancelled">❌ Đã hủy</span>
+                        {% else %}
+                        <span class="status">{{ order.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{% url 'staff_update_order_status' order.id %}"
+                            style="display:flex;gap:.3rem;align-items:center">
+                            {% csrf_token %}
+                            <select name="status"
+                                style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .5rem;border-radius:6px;font-size:.78rem;outline:none">
+                                {% if order.status == 'pending' %}
+                                <option value="pending" selected>⏳ Chờ duyệt</option>
+                                {% else %}
+                                <option value="pending">⏳ Chờ duyệt</option>
+                                {% endif %}
+                                {% if order.status == 'confirmed' %}
+                                <option value="confirmed" selected>✅ Xác nhận</option>
+                                {% else %}
+                                <option value="confirmed">✅ Xác nhận</option>
+                                {% endif %}
+                                {% if order.status == 'shipping' %}
+                                <option value="shipping" selected>🚚 Đang giao</option>
+                                {% else %}
+                                <option value="shipping">🚚 Đang giao</option>
+                                {% endif %}
+                                {% if order.status == 'completed' %}
+                                <option value="completed" selected>🎉 Hoàn thành</option>
+                                {% else %}
+                                <option value="completed">🎉 Hoàn thành</option>
+                                {% endif %}
+                                {% if order.status == 'cancelled' %}
+                                <option value="cancelled" selected>❌ Hủy đơn</option>
+                                {% else %}
+                                <option value="cancelled">❌ Hủy đơn</option>
+                                {% endif %}
+                            </select>
+                            <button type="submit" class="btn btn-success btn-sm">Lưu</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <div class="ico">📦</div>
+        <p>Chưa có đơn hàng nào.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

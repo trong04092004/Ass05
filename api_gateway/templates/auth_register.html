@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Dang ky — BookStore{% endblock %}
+{% block content %}
+<div style="min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:2rem">
+    <div style="width:100%;max-width:420px">
+        <div style="text-align:center;margin-bottom:1.6rem">
+            <div style="font-size:2.5rem">📚</div>
+            <h1 style="font-size:1.35rem;font-weight:700;margin:.5rem 0 .3rem">Tao tai khoan moi</h1>
+            <p style="color:var(--muted);font-size:.85rem">Mien phi, chi mat vai giay</p>
+        </div>
+        <div class="card">
+            {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group"><label>Ho va ten</label><input type="text" name="name"
+                        placeholder="Nguyen Van A" required></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email"
+                        placeholder="email@example.com" required></div>
+                <div class="form-group"><label>Mat khau</label><input type="password" name="password"
+                        placeholder="It nhat 6 ky tu" required minlength="6"></div>
+                <button type="submit" class="btn btn-primary btn-block">Tao tai khoan</button>
+            </form>
+            <div style="text-align:center;margin-top:1rem;color:var(--muted);font-size:.82rem">
+                Da co tai khoan? <a href="{% url 'login_page' %}" style="color:var(--accent2)">Dang nhap</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

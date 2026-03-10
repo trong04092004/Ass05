@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Giỏ hàng — BookStore{% endblock %}
+
+{% block extra_head %}
+<style>
+    .qty-control {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        width: fit-content;
+        background: var(--surface2);
+    }
+
+    .qty-btn {
+        background: none;
+        border: none;
+        color: var(--text);
+        width: 34px;
+        height: 34px;
+        font-size: 1.1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background .15s;
+        flex-shrink: 0;
+    }
+
+    .qty-btn:hover {
+        background: rgba(124, 58, 237, .15);
+        color: var(--accent2);
+    }
+
+    .qty-input {
+        width: 48px !important;
+        background: transparent !important;
+        border: none !important;
+        border-left: 1px solid var(--border) !important;
+        border-right: 1px solid var(--border) !important;
+        border-radius: 0 !important;
+        color: var(--text);
+        text-align: center;
+        font-size: .9rem;
+        font-weight: 600;
+        padding: 0 !important;
+        height: 34px;
+        outline: none;
+    }
+
+    /* ẩn mũi tên input number */
+    .qty-input::-webkit-inner-spin-button,
+    .qty-input::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+    }
+
+    .qty-input[type=number] {
+        -moz-appearance: textfield;
+    }
+
+    .cart-item-row {
+        display: flex;
+        gap: 1rem;
+        padding: 1.2rem;
+        border-bottom: 1px solid var(--border);
+        align-items: center;
+    }
+
+    .cart-item-row:last-child {
+        border-bottom: none;
+    }
+
+    .checkout-btn {
+        display: block;
+        width: 100%;
+        padding: .95rem 1rem;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        color: #fff;
+        text-align: center;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1rem;
+        margin-top: 1.5rem;
+        transition: opacity .2s, transform .15s, box-shadow .2s;
+        letter-spacing: .02em;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 4px 15px rgba(124, 58, 237, .35);
+    }
+
+    .checkout-btn:hover {
+        opacity: .92;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(124, 58, 237, .45);
+    }
+
+    .summary-card {
+        position: sticky;
+        top: 80px;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: .6rem;
+        font-size: .88rem;
+        color: var(--muted);
+    }
+
+    .spinner {
+        display: none;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, .3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin .6s linear infinite;
+        margin: 0 auto;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">🛒 Giỏ hàng của bạn</h1>
+
+    {% if items %}
+    <div style="display:grid;grid-template-columns:1fr 300px;gap:1.5rem;align-items:start">
+
+        <!-- Danh sách sản phẩm -->
+        <div class="card" style="padding:0;overflow:hidden">
+            {% for item in items %}
+            <div class="cart-item-row">
+                <!-- Ảnh bìa -->
+                <div
+                    style="width:68px;height:92px;background:var(--surface2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:2rem;flex-shrink:0;overflow:hidden">
+                    📖
+                </div>
+
+                <!-- Tên + giá + qty control -->
+                <div style="flex:1;min-width:0">
+                    <div
+                        style="font-weight:600;margin-bottom:.25rem;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                        {{ item.book_title }}
+                    </div>
+                    <div style="color:var(--muted);font-size:.8rem;margin-bottom:.55rem">
+                        Đơn giá: <strong style="color:var(--accent2)">{{ item.book_price|floatformat:0 }} đ</strong> /
+                        cuốn
+                    </div>
+
+                    <!-- Nút +/- — form submit ngay khi bấm nút -->
+                    <div style="display:flex;align-items:center;gap:.7rem">
+                        <div class="qty-control">
+                            <form method="post" action="{% url 'update_cart_item' item.id %}" style="display:contents"
+                                id="form-minus-{{ item.id }}">
+                                {% csrf_token %}
+                                <input type="hidden" name="quantity" value="{{ item.quantity|add:'-1' }}">
+                                {% if item.quantity <= 1 %} <button type="submit" class="qty-btn" disabled
+                                    style="opacity:.3;cursor:not-allowed" title="Giảm">−</button>
+                                    {% else %}
+                                    <button type="submit" class="qty-btn" title="Giảm">−</button>
+                                    {% endif %}
+                            </form>
+
+                            <span
+                                style="width:48px;text-align:center;font-size:.9rem;font-weight:600;color:var(--text)">
+                                {{ item.quantity }}
+                            </span>
+
+                            <form method="post" action="{% url 'update_cart_item' item.id %}" style="display:contents"
+                                id="form-plus-{{ item.id }}">
+                                {% csrf_token %}
+                                <input type="hidden" name="quantity" value="{{ item.quantity|add:'1' }}">
+                                <button type="submit" class="qty-btn" title="Tăng">+</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subtotal + Xóa -->
+                <div style="text-align:right;flex-shrink:0">
+                    <div style="font-weight:700;color:var(--accent2);font-size:.95rem;margin-bottom:.5rem">
+                        {{ item.subtotal|floatformat:0 }} đ
+                    </div>
+                    <form method="post" action="{% url 'remove_cart_item' item.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm"
+                            onclick="return confirm('Xóa sản phẩm này?')">
+                            🗑 Xóa
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Tóm tắt đơn hàng -->
+        <div class="card summary-card">
+            <h3 style="font-weight:700;margin-bottom:1.2rem;font-size:1.05rem">📋 Tóm tắt đơn hàng</h3>
+
+            <div class="summary-row">
+                <span>Số sản phẩm</span>
+                <span style="color:var(--text);font-weight:500">{{ items|length }}</span>
+            </div>
+            <div class="summary-row">
+                <span>Tổng số lượng</span>
+                <span style="color:var(--text);font-weight:500">
+                    {% with total_qty=0 %}
+                    {% for item in items %}{{ item.quantity }}{% if not forloop.last %}+{% endif %}{% endfor %}
+                    {% endwith %}
+                </span>
+            </div>
+            <div class="summary-row">
+                <span>Phí vận chuyển</span>
+                <span style="color:var(--green);font-weight:600">Miễn phí</span>
+            </div>
+
+            <div
+                style="display:flex;justify-content:space-between;font-size:1.1rem;font-weight:700;padding-top:.9rem;border-top:1px solid var(--border);margin-top:.4rem">
+                <span>Tổng cộng</span>
+                <span style="color:var(--accent2)">{{ total|floatformat:0 }} đ</span>
+            </div>
+
+            <a href="{% url 'checkout' %}" class="checkout-btn">
+                💳 Thanh toán →
+            </a>
+
+            <a href="{% url 'book_list' %}"
+                style="display:block;text-align:center;margin-top:.9rem;color:var(--muted);font-size:.82rem">
+                ← Tiếp tục mua sắm
+            </a>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <div class="ico">🛒</div>
+        <p style="margin-bottom:1.5rem;font-size:1rem">Giỏ hàng đang trống</p>
+        <a href="{% url 'book_list' %}" class="btn btn-primary">Khám phá sách ngay</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

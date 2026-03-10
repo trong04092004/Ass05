@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Ca nhan — BookStore{% endblock %}
+{% block content %}
+<div class="container">
+    <h1 class="page-title">Thong tin ca nhan</h1>
+    {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;align-items:start">
+        <div class="card">
+            <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">Thong tin tai khoan</h3>
+            <form method="post">{% csrf_token %}
+                <input type="hidden" name="action" value="update_profile">
+                <div class="form-group"><label>Ho va ten</label><input type="text" name="name"
+                        value="{{ customer.name }}"></div>
+                <div class="form-group"><label>Email</label><input type="email" name="email"
+                        value="{{ customer.email }}"></div>
+                <div class="form-group"><label>So dien thoai</label><input type="tel" name="phone"
+                        value="{{ customer.phone }}"></div>
+                <button type="submit" class="btn btn-primary">Luu thay doi</button>
+            </form>
+        </div>
+        <div>
+            <div class="card" style="margin-bottom:1.2rem">
+                <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">Dia chi giao hang</h3>
+                {% for addr in addresses %}
+                <div
+                    style="padding:.7rem;border:1px solid {% if addr.is_default %}var(--accent){% else %}var(--border){% endif %};border-radius:8px;margin-bottom:.6rem;font-size:.85rem">
+                    <strong>[{{ addr.label }}]</strong> {{ addr.street }}, {{ addr.district }}, {{ addr.city }}
+                    {% if addr.is_default %}<span class="badge-role badge-customer" style="margin-left:.5rem">Mac
+                        dinh</span>{% endif %}
+                </div>
+                {% empty %}<p style="color:var(--muted);font-size:.85rem">Chua co dia chi nao.</p>{% endfor %}
+            </div>
+            <div class="card">
+                <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">Them dia chi moi</h3>
+                <form method="post">{% csrf_token %}
+                    <input type="hidden" name="action" value="add_address">
+                    <div class="form-group"><label>Nhan</label><input type="text" name="label" value="Nha"
+                            placeholder="Nha, Cong ty, ..."></div>
+                    <div class="form-group"><label>Dia chi duong</label><input type="text" name="street"
+                            placeholder="123 Nguyen Hue" required></div>
+                    <div class="form-group"><label>Quan / Huyen</label><input type="text" name="district"
+                            placeholder="Quan 1"></div>
+                    <div class="form-group"><label>Thanh pho</label><input type="text" name="city"
+                            value="TP. Ho Chi Minh"></div>
+                    <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;margin-bottom:.8rem"><input
+                            type="checkbox" name="is_default"> Dat lam dia chi mac dinh</label>
+                    <button type="submit" class="btn btn-success">Them dia chi</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

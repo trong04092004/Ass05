@@ -1,0 +1,47 @@
+# --- Python & Bytecode ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+.venv/
+venv/
+lib/
+ENV/
+env/
+.env
+
+# --- Django & Web ---
+db.sqlite3
+db.sqlite3-journal
+*.log
+local_settings.py
+static/
+media/
+staticfiles/
+
+# --- Docker & Volumes ---
+postgres_data/
+docker-volumes/
+
+# --- Mock & Seed Data (As requested to ignore) ---
+seed_data.py
+init_db.sql
+init-multiple-databases.sh
+
+# --- OS & IDE ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+.project
+.pydevproject
+.settings/
+
+# --- Others ---
+tmp/
+*.tmp
+*.bak
+dump.rdb
+.python-version
+.ipynb_checkpoints/

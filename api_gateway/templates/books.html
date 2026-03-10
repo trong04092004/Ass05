@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Sách — BookStore{% endblock %}
+{% block content %}
+<div class="container">
+    <h1 class="page-title">Danh mục sách</h1>
+
+    <form method="get" style="display:flex;gap:.8rem;margin-bottom:1.5rem;flex-wrap:wrap">
+        <input name="q" type="text" placeholder="Tìm sách, tác giả..." value="{{ q }}"
+            style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:.6rem 1rem;border-radius:8px;font-size:.88rem;outline:none">
+
+        <select name="category"
+            style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:.6rem 1rem;border-radius:8px;font-size:.88rem;outline:none">
+            <option value="">Tất cả thể loại</option>
+            {% for cat in categories %}
+            <option value="{{ cat.name }}" {% if selected_category == cat.name %}selected{% endif %}>
+                {{ cat.name }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+
+        {% if q or selected_category %}
+        <a href="{% url 'book_list' %}" class="btn btn-outline">Xóa bộ lọc</a>
+        {% endif %}
+    </form>
+
+    <p style="color:var(--muted);font-size:.84rem;margin-bottom:1.2rem">
+        Hiển thị {{ books|length }} sách
+    </p>
+
+    {% if books %}
+    <div class="books-grid">
+        {% for b in books %}
+        <div class="book-card" onclick="location.href='{% url 'book_detail' b.id %}'">
+
+            <div class="cover">
+                {% if b.image_url %}
+                <img src="{{ b.image_url }}" alt="{{ b.title }}" onerror="this.parentElement.innerHTML='📖'">
+                {% else %}
+                📖
+                {% endif %}
+
+                {% if b.stock == 0 %}
+                <span class="stock-badge out-stock">Hết hàng</span>
+                {% elif b.stock < 10 %} <span class="stock-badge low-stock">Sắp hết</span>
+                    {% else %}
+                    <span class="stock-badge in-stock">Còn hàng</span>
+                    {% endif %}
+            </div>
+
+            <div class="book-info">
+                <div class="stars">★★★★☆</div>
+                <div class="book-title">{{ b.title }}</div>
+                <div class="book-author">{{ b.author }}</div>
+                <div class="book-price">{{ b.price|floatformat:0 }} đ</div>
+
+                {% if customer_id and role == 'customer' %}
+                <form method="post" action="{% url 'add_to_cart' b.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next"
+                        value="{{ request.path }}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
+                    <input type="hidden" name="quantity" value="1">
+                    <button type="submit" class="btn-add-cart">
+                        🛒 Thêm vào giỏ
+                    </button>
+                </form>
+
+                {% elif not customer_id %}
+                <a href="{% url 'login_page' %}" class="btn-add-cart"
+                    style="display:block;text-align:center;padding:.45rem">
+                    🔑 Đăng nhập để mua
+                </a>
+                {% endif %}
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="ico">🔍</div>
+        <p>Không tìm thấy sách phù hợp</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

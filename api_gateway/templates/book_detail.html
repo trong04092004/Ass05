@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}{{ book.title }} — BookStore{% endblock %}
+{% block content %}
+<div class="container">
+
+    <a href="{% url 'book_list' %}"
+        style="color:var(--muted);font-size:.85rem;display:inline-flex;align-items:center;gap:.4rem;margin-bottom:1.5rem">
+        ← Quay lại danh sách
+    </a>
+
+    <div style="display:grid;grid-template-columns:240px 1fr;gap:2.5rem;margin-top:.5rem">
+
+        <!-- LEFT: Ảnh + nút thêm giỏ hàng -->
+        <div>
+            <div
+                style="width:100%;aspect-ratio:3/4;background:var(--surface2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:5rem;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.4)">
+                {% if book.image_url %}
+                <img src="{{ book.image_url }}" style="width:100%;height:100%;object-fit:cover" alt="{{ book.title }}">
+                {% else %}
+                📖
+                {% endif %}
+            </div>
+
+            {% if customer_id and role == 'customer' %}
+            <form method="post" action="{% url 'add_to_cart' book.id %}" style="margin-top:1.2rem">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+
+                <div class="form-group">
+                    <label>Số lượng <span style="color:var(--muted);font-weight:400">(còn <strong
+                                style="color:var(--green)">{{ book.stock }}</strong> cuốn)</span></label>
+                    <input type="number" name="quantity" value="1" min="1" max="{{ book.stock }}">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block"
+                    style="font-size:.9rem;padding:.75rem;{% if book.stock == 0 %}opacity:.5;cursor:not-allowed;{% endif %}"
+                    {% if book.stock == 0 %}disabled{% endif %}>
+                    {% if book.stock == 0 %}
+                    😔 Hết hàng
+                    {% else %}
+                    🛒 Thêm vào giỏ hàng
+                    {% endif %}
+                </button>
+            </form>
+
+            {% elif is_staff %}
+            <div class="alert alert-info" style="margin-top:1.2rem;font-size:.82rem">
+                📋 <strong>Chế độ nhân viên</strong><br>
+                Tồn kho: <strong>{{ book.stock }}</strong> cuốn<br>
+                <a href="{% url 'staff_books' %}" class="btn btn-outline btn-sm"
+                    style="margin-top:.6rem;display:inline-block">
+                    ⚙️ Quản lý kho hàng
+                </a>
+            </div>
+
+            {% elif not customer_id %}
+            <a href="{% url 'login_page' %}" class="btn btn-primary btn-block"
+                style="margin-top:1.2rem;display:block;text-align:center">
+                🔑 Đăng nhập để mua
+            </a>
+            {% endif %}
+
+        </div>
+
+        <!-- RIGHT: Thông tin sách -->
+        <div>
+
+            <h1 style="font-size:1.7rem;font-weight:700;margin-bottom:.6rem;line-height:1.3">
+                {{ book.title }}
+            </h1>
+
+            <p style="color:var(--muted);margin-bottom:.35rem;font-size:.9rem">
+                Tác giả: <strong style="color:var(--text)">{{ book.author }}</strong>
+            </p>
+
+            <p style="color:var(--muted);margin-bottom:.35rem;font-size:.9rem">
+                Thể loại: <span style="color:var(--text)">{{ book.category|default:"—" }}</span>
+            </p>
+
+            <p style="color:var(--muted);margin-bottom:1rem;font-size:.9rem">
+                Tồn kho:
+                {% if book.stock == 0 %}
+                <strong style="color:var(--red)">Hết hàng</strong>
+                {% elif book.stock < 10 %} <strong style="color:var(--gold)">{{ book.stock }} cuốn (sắp hết)</strong>
+                    {% else %}
+                    <strong style="color:var(--green)">{{ book.stock }} cuốn</strong>
+                    {% endif %}
+            </p>
+
+            {% if promo %}
+            <div class="alert alert-success" style="margin-bottom:.8rem">
+                🎉 Đang khuyến mãi <strong>{{ promo.discount_percent }}%</strong>: {{ promo.name }}
+            </div>
+            {% endif %}
+
+            <div style="font-size:2rem;font-weight:700;color:var(--accent2);margin-bottom:1.2rem">
+                {{ book.price|floatformat:0 }} đ
+            </div>
+
+            <div
+                style="color:var(--muted);font-size:.88rem;line-height:1.8;border-top:1px solid var(--border);padding-top:1rem">
+                {{ book.description|default:"Chưa có mô tả." }}
+            </div>
+
+            <!-- RATINGS -->
+            <div style="margin-top:2.5rem">
+
+                <div class="section-title">
+                    Đánh giá ({{ ratings|length }}) — Trung bình: {{ avg_rating }}/5 ★
+                </div>
+
+                {% if not already_rated and customer_id and role == 'customer' %}
+                <div class="card" style="margin-bottom:1.2rem">
+                    <form method="post" action="{% url 'rate_book' book.id %}">
+                        {% csrf_token %}
+
+                        <div class="form-group">
+                            <label>Đánh giá của bạn</label>
+                            <select name="rating">
+                                <option value="5">5 ★ — Tuyệt vời</option>
+                                <option value="4">4 ★ — Tốt</option>
+                                <option value="3">3 ★ — Bình thường</option>
+                                <option value="2">2 ★ — Kém</option>
+                                <option value="1">1 ★ — Rất kém</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Nhận xét</label>
+                            <textarea name="comment" rows="3" placeholder="Viết nhận xét của bạn..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            Gửi đánh giá
+                        </button>
+                    </form>
+                </div>
+
+                {% elif already_rated %}
+                <div class="alert alert-info">
+                    ✅ Bạn đã đánh giá sách này rồi.
+                </div>
+                {% endif %}
+
+                {% for r in ratings %}
+                <div class="card" style="margin-bottom:.8rem">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:.4rem">
+                        <span style="font-weight:600;font-size:.85rem">
+                            Khách hàng #{{ r.customer_id }}
+                        </span>
+                        <span style="color:var(--gold);font-size:.85rem">
+                            {{ r.rating }} ★
+                        </span>
+                    </div>
+
+                    <p style="color:var(--muted);font-size:.82rem;margin:0">
+                        {{ r.comment }}
+                    </p>
+                </div>
+
+                {% empty %}
+                <p style="color:var(--muted)">
+                    Chưa có đánh giá nào.
+                </p>
+                {% endfor %}
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

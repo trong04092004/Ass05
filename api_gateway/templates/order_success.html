@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Đặt hàng thành công — BookStore{% endblock %}
+
+{% block extra_head %}
+<style>
+    @keyframes pop {
+        0% {
+            transform: scale(0.5);
+            opacity: 0
+        }
+
+        80% {
+            transform: scale(1.1)
+        }
+
+        100% {
+            transform: scale(1);
+            opacity: 1
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:2rem">
+    <div style="max-width:540px;width:100%;text-align:center;animation:slideUp .5s ease">
+
+        <div style="font-size:5rem;margin-bottom:.8rem;display:inline-block;animation:pop .5s ease">✅</div>
+        <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:.5rem">Đặt hàng thành công!</h1>
+        <p style="color:var(--muted);margin-bottom:1.8rem;font-size:.93rem">
+            Đơn hàng <strong style="color:var(--text)">#{{ order.id }}</strong> đã được xác nhận.<br>
+            Cảm ơn bạn đã mua sách tại BookStore! 🎉
+        </p>
+
+        <div class="card" style="text-align:left;margin-bottom:1.8rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:.88rem">
+                <div>
+                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Mã đơn
+                        hàng</span>
+                    <div style="font-weight:700;font-size:.95rem">#{{ order.id }}</div>
+                </div>
+                <div>
+                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Trạng thái</span>
+                    <div><span class="status status-pending">Đang xử lý</span></div>
+                </div>
+                <div>
+                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Thanh toán</span>
+                    <div style="font-weight:600">{{ payment_display }}</div>
+                </div>
+                <div>
+                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Vận chuyển</span>
+                    <div style="font-weight:600">{{ shipping_display }}</div>
+                </div>
+                <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:.8rem;margin-top:.2rem">
+                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Tổng tiền</span>
+                    <div style="font-weight:700;color:var(--accent2);font-size:1.2rem">
+                        {{ order.total_amount|floatformat:0 }} đ
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:.8rem;justify-content:center">
+            <a href="{% url 'order_history' %}" class="btn btn-primary">📋 Xem đơn hàng của tôi</a>
+            <a href="{% url 'home' %}" class="btn btn-outline">🏠 Về trang chủ</a>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

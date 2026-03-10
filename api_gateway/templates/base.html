@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BookStore{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --surface: #1a1a24;
+            --surface2: #22223a;
+            --accent: #7c3aed;
+            --accent2: #a855f7;
+            --gold: #f59e0b;
+            --green: #10b981;
+            --red: #ef4444;
+            --text: #e8e8f0;
+            --muted: #6b6b8a;
+            --border: rgba(124, 58, 237, .2)
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none
+        }
+
+        /* NAV */
+        nav {
+            background: rgba(15, 15, 19, .97);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.4rem;
+            align-items: center
+        }
+
+        .nav-links a {
+            color: var(--muted);
+            font-size: .88rem;
+            font-weight: 500;
+            transition: color .2s;
+            padding: .3rem 0
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--text)
+        }
+
+        .nav-user {
+            font-size: .8rem;
+            color: var(--muted);
+            border-left: 1px solid var(--border);
+            padding-left: 1rem;
+            margin-left: .5rem
+        }
+
+        .badge-role {
+            font-size: .65rem;
+            padding: .1rem .45rem;
+            border-radius: 50px;
+            font-weight: 700;
+            margin-left: .3rem
+        }
+
+        .badge-staff {
+            background: #f59e0b;
+            color: #000
+        }
+
+        .badge-manager {
+            background: #7c3aed;
+            color: #fff
+        }
+
+        .badge-customer {
+            background: #10b981;
+            color: #fff
+        }
+
+        /* Cart badge */
+        .cart-link {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem
+        }
+
+        .cart-badge {
+            background: var(--accent2);
+            color: #fff;
+            font-size: .6rem;
+            font-weight: 700;
+            min-width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 3px;
+            line-height: 1
+        }
+
+        /* LAYOUT */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem
+        }
+
+        .page-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: .7rem;
+            color: var(--text)
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border)
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem
+        }
+
+        /* BOOKS GRID */
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+            gap: 1.2rem
+        }
+
+        .book-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform .25s, border-color .25s, box-shadow .25s
+        }
+
+        .book-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+            box-shadow: 0 12px 32px rgba(124, 58, 237, .2)
+        }
+
+        .cover {
+            width: 100%;
+            aspect-ratio: 3/4;
+            background: linear-gradient(135deg, var(--surface2), var(--surface));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            position: relative;
+            overflow: hidden
+        }
+
+        .cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover
+        }
+
+        .stock-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: .62rem;
+            padding: .15rem .45rem;
+            border-radius: 50px;
+            font-weight: 700
+        }
+
+        .in-stock {
+            background: var(--green);
+            color: #fff
+        }
+
+        .low-stock {
+            background: var(--gold);
+            color: #000
+        }
+
+        .out-stock {
+            background: var(--red);
+            color: #fff
+        }
+
+        .book-info {
+            padding: .75rem
+        }
+
+        .stars {
+            color: var(--gold);
+            font-size: .7rem;
+            margin-bottom: .2rem
+        }
+
+        .book-title {
+            font-size: .85rem;
+            font-weight: 600;
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            margin-bottom: .2rem
+        }
+
+        .book-author {
+            font-size: .75rem;
+            color: var(--muted);
+            margin-bottom: .45rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis
+        }
+
+        .book-price {
+            font-size: .9rem;
+            font-weight: 700;
+            color: var(--accent2)
+        }
+
+        .btn-add-cart {
+            width: 100%;
+            margin-top: .5rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff;
+            border: none;
+            padding: .45rem;
+            border-radius: 8px;
+            font-size: .75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity .2s
+        }
+
+        .btn-add-cart:hover {
+            opacity: .85
+        }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-block;
+            padding: .62rem 1.3rem;
+            border-radius: 8px;
+            font-size: .88rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity .2s
+        }
+
+        .btn:hover {
+            opacity: .85
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #fff
+        }
+
+        .btn-outline {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text)
+        }
+
+        .btn-danger {
+            background: var(--red);
+            color: #fff
+        }
+
+        .btn-success {
+            background: var(--green);
+            color: #fff
+        }
+
+        .btn-sm {
+            padding: .35rem .8rem;
+            font-size: .78rem
+        }
+
+        .btn-block {
+            width: 100%;
+            text-align: center
+        }
+
+        /* FORMS */
+        .form-group {
+            margin-bottom: 1.1rem
+        }
+
+        .form-group label {
+            display: block;
+            font-size: .83rem;
+            font-weight: 500;
+            margin-bottom: .45rem;
+            color: var(--muted)
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            padding: .68rem 1rem;
+            border-radius: 8px;
+            color: var(--text);
+            font-size: .88rem;
+            outline: none;
+            transition: border-color .2s;
+            font-family: inherit
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--accent)
+        }
+
+        /* ALERTS */
+        .alert {
+            padding: .8rem 1.1rem;
+            border-radius: 8px;
+            font-size: .85rem;
+            margin-bottom: 1rem
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, .1);
+            border: 1px solid rgba(239, 68, 68, .3);
+            color: #f87171
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, .1);
+            border: 1px solid rgba(16, 185, 129, .3);
+            color: #34d399
+        }
+
+        .alert-info {
+            background: rgba(124, 58, 237, .1);
+            border: 1px solid rgba(124, 58, 237, .3);
+            color: var(--accent2)
+        }
+
+        /* TABLE */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .85rem
+        }
+
+        thead th {
+            background: var(--surface2);
+            padding: .75rem 1rem;
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600
+        }
+
+        tbody td {
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--border)
+        }
+
+        /* STATUS BADGES */
+        .status {
+            display: inline-block;
+            padding: .2rem .6rem;
+            border-radius: 50px;
+            font-size: .72rem;
+            font-weight: 700
+        }
+
+        .status-pending {
+            background: rgba(245, 158, 11, .15);
+            color: var(--gold)
+        }
+
+        .status-confirmed {
+            background: rgba(16, 185, 129, .15);
+            color: var(--green)
+        }
+
+        .status-shipping {
+            background: rgba(124, 58, 237, .15);
+            color: var(--accent2)
+        }
+
+        .status-completed {
+            background: rgba(16, 185, 129, .2);
+            color: var(--green)
+        }
+
+        .status-cancelled {
+            background: rgba(239, 68, 68, .15);
+            color: var(--red)
+        }
+
+        /* EMPTY */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--muted)
+        }
+
+        .empty-state .ico {
+            font-size: 3rem;
+            margin-bottom: .8rem
+        }
+
+        /* TOAST */
+        .toast-msg {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: .8rem 1.3rem;
+            border-radius: 10px;
+            font-size: .84rem;
+            z-index: 9999;
+            display: none
+        }
+
+        @media(max-width:640px) {
+            .books-grid {
+                grid-template-columns: repeat(2, 1fr)
+            }
+
+            .nav-links {
+                gap: .8rem
+            }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <nav>
+        <a href="{% url 'home' %}" class="logo">📚 BookStore</a>
+        <div class="nav-links">
+            <a href="{% url 'home' %}">Trang chủ</a>
+            <a href="{% url 'book_list' %}">Sách</a>
+            {% if customer_id %}
+            {% if not is_staff %}
+            <a href="{% url 'my_cart' %}" class="cart-link">
+                🛒 Giỏ hàng
+                {% if cart_count > 0 %}<span class="cart-badge">{{ cart_count }}</span>{% endif %}
+            </a>
+            <a href="{% url 'order_history' %}">Đơn hàng</a>
+            <a href="{% url 'profile' %}">Cá nhân</a>
+            {% endif %}
+            {% if is_staff %}
+            <a href="{% url 'staff_books' %}">📚 Quản lý sách</a>
+            <a href="{% url 'staff_orders' %}">📦 Duyệt đơn</a>
+            <a href="{% url 'staff_inventory' %}">🏭 Nhập kho</a>
+            {% endif %}
+            {% if is_manager %}
+            <a href="{% url 'manager_dashboard' %}">📊 Dashboard</a>
+            <a href="{% url 'manager_promotions' %}">🎁 Khuyến mãi</a>
+            <a href="{% url 'manager_categories' %}">🏷️ Thể loại</a>
+            {% endif %}
+            <span class="nav-user">
+                {{ name }}
+                {% if role == 'manager' %}<span class="badge-role badge-manager">Manager</span>
+                {% elif role == 'staff' %}<span class="badge-role badge-staff">Staff</span>
+                {% else %}<span class="badge-role badge-customer">Khách</span>{% endif %}
+            </span>
+            <a href="{% url 'logout' %}" class="btn btn-outline btn-sm">Đăng xuất</a>
+            {% else %}
+            <a href="{% url 'login_page' %}" class="btn btn-outline btn-sm">Đăng nhập</a>
+            <a href="{% url 'register_page' %}" class="btn btn-primary btn-sm">Đăng ký</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    {% block content %}{% endblock %}
+
+    <div class="toast-msg" id="toast"></div>
+    {% if request.session.cart_msg %}
+    <div id="cart-msg-data" data-msg="{{ request.session.cart_msg }}" style="display:none"></div>
+    {% endif %}
+    <script>
+        function showToast(msg, isError) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.display = 'block';
+            t.style.borderColor = isError ? 'var(--red)' : 'var(--accent)';
+            setTimeout(function () { t.style.display = 'none'; }, 3500);
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            const d = document.getElementById('cart-msg-data');
+            if (d) {
+                const msg = d.dataset.msg;
+                showToast(msg, msg.indexOf('L') === 0 && msg.indexOf('i') > 0);
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

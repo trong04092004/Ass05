@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% block title %}Thanh toán — BookStore{% endblock %}
+
+{% block extra_head %}
+<style>
+    .radio-option {
+        display: flex;
+        align-items: center;
+        gap: .7rem;
+        padding: .8rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: .6rem;
+        transition: border-color .2s, background .2s;
+        font-size: .88rem;
+    }
+
+    .radio-option:has(input:checked) {
+        border-color: var(--accent);
+        background: rgba(124, 58, 237, .07);
+    }
+
+    .radio-option input[type=radio] {
+        accent-color: var(--accent2);
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    .place-order-btn {
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity .2s, transform .15s, box-shadow .2s;
+        letter-spacing: .02em;
+        margin-top: .5rem;
+        box-shadow: 0 4px 15px rgba(124, 58, 237, .35);
+    }
+
+    .place-order-btn:hover {
+        opacity: .9;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(124, 58, 237, .45);
+    }
+
+    .place-order-btn:active {
+        transform: translateY(0);
+    }
+
+    .place-order-btn:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .section-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.3rem 1.5rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .section-card h3 {
+        font-size: .95rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .checkout-grid {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 1.5rem;
+        align-items: start;
+    }
+
+    .summary-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.3rem 1.5rem;
+        position: sticky;
+        top: 80px;
+    }
+
+    .form-input {
+        width: 100%;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        padding: .68rem 1rem;
+        border-radius: 8px;
+        color: var(--text);
+        font-size: .88rem;
+        outline: none;
+        transition: border-color .2s;
+        font-family: inherit;
+    }
+
+    .form-input:focus {
+        border-color: var(--accent);
+    }
+
+    .form-label {
+        display: block;
+        font-size: .83rem;
+        font-weight: 500;
+        margin-bottom: .45rem;
+        color: var(--muted);
+    }
+
+    @media (max-width: 768px) {
+        .checkout-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="page-title">💳 Thanh toán</h1>
+
+    {% if error %}
+    <div class="alert alert-error" style="margin-bottom:1.5rem">
+        ⚠️ {{ error }}
+    </div>
+    {% endif %}
+
+    {% if items %}
+    <div class="checkout-grid">
+
+        <!-- Cột trái: Form đặt hàng -->
+        <div>
+            <!-- Sản phẩm trong đơn -->
+            <div class="section-card">
+                <h3>📦 Sản phẩm trong đơn</h3>
+                {% for item in items %}
+                <div
+                    style="display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid var(--border)">
+                    <span style="font-size:.85rem;flex:1;padding-right:.8rem">
+                        {{ item.book_title }} <span style="color:var(--muted)">× {{ item.quantity }}</span>
+                    </span>
+                    <span style="color:var(--accent2);font-weight:600;font-size:.88rem;white-space:nowrap">
+                        {{ item.subtotal|floatformat:0 }} đ
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <form method="post" action="{% url 'place_order' %}" id="checkout-form">
+                {% csrf_token %}
+
+                <!-- Địa chỉ nhận hàng -->
+                <div class="section-card">
+                    <h3>📍 Địa chỉ nhận hàng</h3>
+                    {% if addresses %}
+                    <div style="margin-bottom:.9rem">
+                        <label class="form-label">Chọn địa chỉ đã lưu</label>
+                        <select name="address" class="form-input">
+                            {% for addr in addresses %}
+                            {% if addr.is_default %}
+                            <option value="{{ addr.street }}, {{ addr.district }}, {{ addr.city }}" selected>
+                                [{{ addr.label }}] {{ addr.street }}, {{ addr.district }}, {{ addr.city }}
+                            </option>
+                            {% else %}
+                            <option value="{{ addr.street }}, {{ addr.district }}, {{ addr.city }}">
+                                [{{ addr.label }}] {{ addr.street }}, {{ addr.district }}, {{ addr.city }}
+                            </option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% else %}
+                    <div style="margin-bottom:.9rem">
+                        <label class="form-label">Địa chỉ giao hàng</label>
+                        <input type="text" name="address" class="form-input" placeholder="123 Đường ABC, Quận 1, TP.HCM"
+                            required>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <label class="form-label">Số điện thoại</label>
+                        <input type="tel" name="phone" class="form-input" placeholder="09xxxxxxxx" required>
+                    </div>
+                </div>
+
+                <!-- Phương thức thanh toán -->
+                <div class="section-card">
+                    <h3>💰 Phương thức thanh toán</h3>
+                    <label class="radio-option">
+                        <input type="radio" name="payment_method" value="cod" checked>
+                        💵 COD — Thu tiền khi giao hàng
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="payment_method" value="bank">
+                        🏦 Chuyển khoản ngân hàng
+                    </label>
+                    <label class="radio-option" style="margin-bottom:0">
+                        <input type="radio" name="payment_method" value="card">
+                        💳 Thẻ tín dụng / ghi nợ
+                    </label>
+                </div>
+
+                <!-- Phương thức vận chuyển -->
+                <div class="section-card">
+                    <h3>🚚 Phương thức vận chuyển</h3>
+                    <label class="radio-option">
+                        <input type="radio" name="shipping_method" value="standard" checked>
+                        📦 Tiêu chuẩn — 3-5 ngày <span
+                            style="color:var(--green);font-weight:600;margin-left:.3rem">(Miễn phí)</span>
+                    </label>
+                    <label class="radio-option" style="margin-bottom:0">
+                        <input type="radio" name="shipping_method" value="express">
+                        ⚡ Giao hàng nhanh — 1-2 ngày
+                    </label>
+                </div>
+
+                <button type="submit" class="place-order-btn" id="place-order-btn">
+                    ✅ Đặt hàng ngay →
+                </button>
+
+                <a href="{% url 'my_cart' %}"
+                    style="display:block;text-align:center;margin-top:.9rem;color:var(--muted);font-size:.82rem">
+                    ← Quay lại giỏ hàng
+                </a>
+            </form>
+        </div>
+
+        <!-- Cột phải: Tóm tắt giá -->
+        <div class="summary-card">
+            <h3 style="font-weight:700;margin-bottom:1.1rem;font-size:1.05rem">📋 Tóm tắt đơn hàng</h3>
+
+            {% for item in items %}
+            <div
+                style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--muted);margin-bottom:.4rem;gap:.5rem">
+                <span style="flex:1">{{ item.book_title }}</span>
+                <span style="white-space:nowrap">× {{ item.quantity }}</span>
+            </div>
+            {% endfor %}
+
+            <div style="border-top:1px solid var(--border);margin-top:.6rem;padding-top:.6rem">
+                <div
+                    style="display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);margin-bottom:.4rem">
+                    <span>Phí vận chuyển</span>
+                    <span style="color:var(--green);font-weight:600">Miễn phí</span>
+                </div>
+                <div
+                    style="display:flex;justify-content:space-between;font-size:1.05rem;font-weight:700;margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border)">
+                    <span>Tổng cộng</span>
+                    <span style="color:var(--accent2)">{{ total|floatformat:0 }} đ</span>
+                </div>
+            </div>
+
+            <button type="submit" form="checkout-form" class="place-order-btn" style="margin-top:1.2rem">
+                ✅ Đặt hàng ngay →
+            </button>
+        </div>
+
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <div class="ico">🛒</div>
+        <p style="margin-bottom:1.5rem">Giỏ hàng trống, không thể thanh toán.</p>
+        <a href="{% url 'my_cart' %}" class="btn btn-primary">← Quay lại giỏ hàng</a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var form = document.getElementById('checkout-form');
+        var btn = document.getElementById('place-order-btn');
+        if (form && btn) {
+            form.addEventListener('submit', function () {
+                btn.disabled = true;
+                btn.textContent = '⏳ Đang xử lý...';
+                // Cũng disable nút trong summary card
+                var btns = document.querySelectorAll('.place-order-btn');
+                btns.forEach(function (b) {
+                    b.disabled = true;
+                    b.textContent = '⏳ Đang xử lý...';
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}
