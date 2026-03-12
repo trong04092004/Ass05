@@ -59,9 +59,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.environ.get('DB_NAME', 'bookstore_micro_gateway'),
         'USER': os.environ.get('DB_USER', 'bookstore_admin'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'bookstore_pass_2024'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', '123456'),
         'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '15432'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 

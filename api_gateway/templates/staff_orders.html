@@ -1,121 +1,238 @@
 {% extends "base.html" %}
 {% block title %}Duyệt đơn hàng — Nhân viên{% endblock %}
 
+{% block extra_head %}
+<style>
+    /* --- Nâng cấp giao diện tổng thể (Modern UI) --- */
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --danger: #ef4444;
+        --success: #10b981;
+        --bg-light: #f8fafc;
+        --border-soft: #e2e8f0;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+    }
+
+    .modern-card {
+        background: #ffffff;
+        border: 1px solid var(--border-soft);
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+        overflow: hidden;
+    }
+
+    /* --- Bảng (Table) --- */
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .modern-table th {
+        background: var(--bg-light);
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1rem 1.25rem;
+        text-align: left;
+        border-bottom: 2px solid var(--border-soft);
+    }
+
+    .modern-table td {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border-soft);
+        vertical-align: middle;
+        font-size: 0.95rem;
+        color: var(--text-main);
+    }
+
+    .modern-table tbody tr { transition: background-color 0.2s; }
+    .modern-table tbody tr:hover { background-color: #f8fafc; }
+    .modern-table tbody tr:last-child td { border-bottom: none; }
+
+    /* --- Form & Buttons --- */
+    .modern-select {
+        background: #ffffff;
+        border: 1px solid var(--border-soft);
+        color: var(--text-main);
+        padding: 0.4rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        outline: none;
+        font-family: inherit;
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+    }
+    .modern-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+    }
+
+    .modern-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.4rem 0.85rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+    /* --- Badges cho trạng thái --- */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .badge-pending { background: #fef3c7; color: #b45309; }   /* Vàng cam */
+    .badge-confirmed { background: #e0e7ff; color: #4338ca; } /* Xanh dương */
+    .badge-shipping { background: #f3e8ff; color: #7e22ce; }  /* Tím */
+    .badge-completed { background: #dcfce7; color: #15803d; } /* Xanh lá */
+    .badge-cancelled { background: #fee2e2; color: #b91c1c; } /* Đỏ */
+    
+    .badge-payment { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+    /* --- Empty State --- */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: white;
+        border-radius: 16px;
+        border: 1px dashed #cbd5e1;
+    }
+    .empty-state .ico { font-size: 3rem; margin-bottom: 1rem; opacity: 0.7; }
+    .empty-state p { color: var(--text-muted); font-size: 1.1rem; margin: 0; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container">
-    <h1 class="page-title">📦 Duyệt đơn hàng</h1>
+<div class="container" style="max-width: 1300px; margin: 0 auto; padding: 2rem 1rem;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
+        <div>
+            <h1 class="page-title" style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin: 0 0 0.5rem 0;">📦 Duyệt đơn hàng</h1>
+            {% if orders %}
+            <div style="font-size: 0.95rem; color: var(--text-muted);">
+                Đang hiển thị tổng cộng <strong style="color: var(--primary); font-size: 1.1rem;">{{ orders|length }}</strong> đơn hàng cần xử lý.
+            </div>
+            {% endif %}
+        </div>
+    </div>
 
     {% if success %}
-    <div class="alert alert-success">✅ {{ success }}</div>
+    <div class="alert alert-success" style="background: #dcfce7; color: #15803d; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #bbf7d0;">
+        ✅ <strong>Thành công!</strong> {{ success }}
+    </div>
     {% endif %}
     {% if error %}
-    <div class="alert alert-error">⚠️ {{ error }}</div>
+    <div class="alert alert-error" style="background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #fecaca;">
+        ⚠️ <strong>Lỗi!</strong> {{ error }}
+    </div>
     {% endif %}
 
     {% if orders %}
-    <div style="margin-bottom:1rem;font-size:.84rem;color:var(--muted)">
-        Tổng cộng: <strong style="color:var(--text)">{{ orders|length }}</strong> đơn hàng
-    </div>
-
-    <div style="overflow-x:auto">
-        <table>
-            <thead>
-                <tr>
-                    <th>Mã đơn</th>
-                    <th>Khách hàng</th>
-                    <th>Sản phẩm</th>
-                    <th>Tổng tiền</th>
-                    <th>Thanh toán</th>
-                    <th>Trạng thái</th>
-                    <th>Duyệt đơn</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for order in orders %}
-                <tr>
-                    <td><strong>#{{ order.id }}</strong>
-                        <div style="font-size:.7rem;color:var(--muted)">
-                            {% if order.created_at %}{{ order.created_at|slice:":10" }}{% endif %}
-                        </div>
-                    </td>
-                    <td style="color:var(--muted)">KH #{{ order.customer_id }}</td>
-                    <td style="font-size:.78rem;color:var(--muted);max-width:200px">
-                        {% for item in order.items %}
-                        <span>{{ item.book_title|default:"Sách" }} ×{{ item.quantity }}</span>
-                        {% if not forloop.last %}, {% endif %}
-                        {% empty %}<span style="color:var(--muted)">—</span>
-                        {% endfor %}
-                    </td>
-                    <td style="color:var(--accent2);font-weight:700;white-space:nowrap">
-                        {{ order.total_amount|floatformat:0 }} đ
-                    </td>
-                    <td>
-                        {% if order.payment_method == 'cod' %}💵 COD
-                        {% elif order.payment_method == 'bank' %}🏦 Ngân hàng
-                        {% elif order.payment_method == 'card' %}💳 Thẻ
-                        {% else %}{{ order.payment_method|default:"—" }}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if order.status == 'pending' %}
-                        <span class="status status-pending">⏳ Chờ duyệt</span>
-                        {% elif order.status == 'confirmed' %}
-                        <span class="status status-confirmed">✅ Đã xác nhận</span>
-                        {% elif order.status == 'shipping' %}
-                        <span class="status status-shipping">🚚 Đang giao</span>
-                        {% elif order.status == 'completed' %}
-                        <span class="status status-completed">🎉 Hoàn thành</span>
-                        {% elif order.status == 'cancelled' %}
-                        <span class="status status-cancelled">❌ Đã hủy</span>
-                        {% else %}
-                        <span class="status">{{ order.status }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <form method="post" action="{% url 'staff_update_order_status' order.id %}"
-                            style="display:flex;gap:.3rem;align-items:center">
-                            {% csrf_token %}
-                            <select name="status"
-                                style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.3rem .5rem;border-radius:6px;font-size:.78rem;outline:none">
-                                {% if order.status == 'pending' %}
-                                <option value="pending" selected>⏳ Chờ duyệt</option>
-                                {% else %}
-                                <option value="pending">⏳ Chờ duyệt</option>
+    <div class="modern-card">
+        <div style="overflow-x: auto;">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">Mã đơn</th>
+                        <th style="width: 150px;">Khách hàng</th>
+                        <th>Sản phẩm</th>
+                        <th style="width: 130px;">Tổng tiền</th>
+                        <th style="width: 130px;">Thanh toán</th>
+                        <th style="width: 140px;">Trạng thái</th>
+                        <th style="width: 180px; text-align: right;">Thao tác duyệt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>
+                            <strong style="color: var(--primary); font-size: 1.05rem;">#{{ order.id }}</strong>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem; font-weight: 500;">
+                                {% if order.created_at %}{{ order.created_at|slice:":10" }}{% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 28px; height: 28px; border-radius: 50%; background: var(--bg-light); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; border: 1px solid var(--border-soft);">👤</div>
+                                <span style="font-weight: 600; color: var(--text-muted); font-size: 0.85rem;">KH #{{ order.customer_id }}</span>
+                            </div>
+                        </td>
+                        <td style="font-size: 0.85rem; color: var(--text-muted); max-width: 250px; line-height: 1.5;">
+                            {% for item in order.items %}
+                                <span style="color: var(--text-main); font-weight: 500;">{{ item.book_title|default:"Sách" }}</span> 
+                                <span style="color: var(--primary);">×{{ item.quantity }}</span>
+                                {% if not forloop.last %}<br>{% endif %}
+                            {% empty %}
+                                <span style="color:var(--text-muted)">—</span>
+                            {% endfor %}
+                        </td>
+                        <td style="font-weight: 700; color: var(--text-main); white-space: nowrap;">
+                            {{ order.total_amount|floatformat:0 }} ₫
+                        </td>
+                        <td>
+                            <span class="badge badge-payment">
+                                {% if order.payment_method == 'cod' %}💵 Tiền mặt
+                                {% elif order.payment_method == 'bank' %}🏦 Chuyển khoản
+                                {% elif order.payment_method == 'card' %}💳 Thẻ TD
+                                {% else %}{{ order.payment_method|default:"—" }}
                                 {% endif %}
-                                {% if order.status == 'confirmed' %}
-                                <option value="confirmed" selected>✅ Xác nhận</option>
-                                {% else %}
-                                <option value="confirmed">✅ Xác nhận</option>
-                                {% endif %}
-                                {% if order.status == 'shipping' %}
-                                <option value="shipping" selected>🚚 Đang giao</option>
-                                {% else %}
-                                <option value="shipping">🚚 Đang giao</option>
-                                {% endif %}
-                                {% if order.status == 'completed' %}
-                                <option value="completed" selected>🎉 Hoàn thành</option>
-                                {% else %}
-                                <option value="completed">🎉 Hoàn thành</option>
-                                {% endif %}
-                                {% if order.status == 'cancelled' %}
-                                <option value="cancelled" selected>❌ Hủy đơn</option>
-                                {% else %}
-                                <option value="cancelled">❌ Hủy đơn</option>
-                                {% endif %}
-                            </select>
-                            <button type="submit" class="btn btn-success btn-sm">Lưu</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                            </span>
+                        </td>
+                        <td>
+                            {% if order.status == 'pending' %}
+                                <span class="badge badge-pending">⏳ Chờ duyệt</span>
+                            {% elif order.status == 'confirmed' %}
+                                <span class="badge badge-confirmed">✅ Xác nhận</span>
+                            {% elif order.status == 'shipping' %}
+                                <span class="badge badge-shipping">🚚 Đang giao</span>
+                            {% elif order.status == 'completed' %}
+                                <span class="badge badge-completed">🎉 Hoàn thành</span>
+                            {% elif order.status == 'cancelled' %}
+                                <span class="badge badge-cancelled">❌ Đã hủy</span>
+                            {% else %}
+                                <span class="badge badge-payment">{{ order.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <form method="post" action="{% url 'staff_update_order_status' order.id %}" style="display: flex; gap: 0.5rem; align-items: center; justify-content: flex-end;">
+                                {% csrf_token %}
+                                <select name="status" class="modern-select">
+                                    <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>⏳ Chờ duyệt</option>
+                                    <option value="confirmed" {% if order.status == 'confirmed' %}selected{% endif %}>✅ Xác nhận</option>
+                                    <option value="shipping" {% if order.status == 'shipping' %}selected{% endif %}>🚚 Đang giao</option>
+                                    <option value="completed" {% if order.status == 'completed' %}selected{% endif %}>🎉 Hoàn thành</option>
+                                    <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>❌ Hủy đơn</option>
+                                </select>
+                                <button type="submit" class="modern-btn btn-primary" title="Lưu trạng thái">💾</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     {% else %}
     <div class="empty-state">
-        <div class="ico">📦</div>
-        <p>Chưa có đơn hàng nào.</p>
+        <div class="ico">📭</div>
+        <p>Tuyệt vời! Hiện tại không có đơn hàng nào chờ bạn xử lý.</p>
     </div>
     {% endif %}
 </div>

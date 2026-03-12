@@ -3,102 +3,211 @@
 
 {% block extra_head %}
 <style>
+    /* --- Nâng cấp giao diện tổng thể (Modern UI) --- */
+    :root {
+        --primary: #4f46e5;
+        --primary-hover: #4338ca;
+        --danger: #ef4444;
+        --danger-hover: #dc2626;
+        --success: #10b981;
+        --bg-light: #f8fafc;
+        --border-soft: #e2e8f0;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+    }
+
+    .modern-card {
+        background: #ffffff;
+        border: 1px solid var(--border-soft);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+        transition: box-shadow 0.3s ease;
+    }
+    
+    .modern-card:hover {
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* --- Form & Inputs --- */
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        font-size: 0.875rem;
+        color: var(--text-main);
+        margin-bottom: 0.5rem;
+    }
+
+    .modern-input, .modern-select, .modern-textarea {
+        width: 100%;
+        background: #ffffff;
+        border: 1px solid var(--border-soft);
+        color: var(--text-main);
+        padding: 0.75rem 1rem;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        outline: none;
+        font-family: inherit;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .modern-input:focus, .modern-select:focus, .modern-textarea:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.15);
+    }
+
+    /* --- Buttons --- */
+    .modern-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.65rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { filter: brightness(0.9); transform: translateY(-1px); }
+    
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: var(--danger-hover); transform: translateY(-1px); }
+
+    .btn-outline { background: transparent; border: 1px solid var(--border-soft); color: var(--text-main); }
+    .btn-outline:hover { background: var(--bg-light); border-color: #cbd5e1; }
+
+    /* --- Bảng (Table) --- */
+    .modern-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .modern-table th {
+        background: var(--bg-light);
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 2px solid var(--border-soft);
+    }
+
+    .modern-table th:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+    .modern-table th:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+    .modern-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-soft);
+        vertical-align: middle;
+        font-size: 0.95rem;
+    }
+
+    .modern-table tbody tr { transition: background-color 0.2s; }
+    .modern-table tbody tr:hover { background-color: #f8fafc; }
+
+    /* --- Badges --- */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .badge-category { background: #e0e7ff; color: #4338ca; }
+    .badge-ok { background: #dcfce7; color: #15803d; }
+    .badge-low { background: #fef08a; color: #854d0e; }
+    .badge-out { background: #fee2e2; color: #b91c1c; }
+
+    /* --- Modal --- */
     .modal-overlay {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, .65);
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px); /* Hiệu ứng kính mờ */
         z-index: 200;
         align-items: center;
         justify-content: center;
     }
 
-    .modal-overlay.active {
-        display: flex;
-    }
+    .modal-overlay.active { display: flex; }
 
     .modal-box {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1.8rem;
-        width: 560px;
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 2rem;
+        width: 600px;
         max-width: 95vw;
         max-height: 90vh;
         overflow-y: auto;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        animation: modalSlideUp 0.3s ease-out forwards;
     }
 
-    .form-select {
-        width: 100%;
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        color: var(--text);
-        padding: .65rem 1rem;
-        border-radius: 8px;
-        font-size: .88rem;
-        outline: none;
-        font-family: inherit;
-        transition: border-color .2s;
-    }
-
-    .form-select:focus {
-        border-color: var(--accent);
-    }
-
-    .stock-ok {
-        color: var(--green);
-        font-weight: 600;
-    }
-
-    .stock-low {
-        color: var(--gold);
-        font-weight: 600;
-    }
-
-    .stock-out {
-        color: var(--red);
-        font-weight: 600;
+    @keyframes modalSlideUp {
+        from { opacity: 0; transform: translateY(20px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1 class="page-title">📚 Quản lý sách</h1>
+<div class="container" style="max-width: 1200px; margin: 0 auto; padding: 2rem 1rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h1 class="page-title" style="font-size: 1.8rem; font-weight: 800; color: var(--text-main); margin: 0;">📚 Quản lý sách</h1>
+    </div>
 
     {% if success %}
-    <div class="alert alert-success">✅ {{ success }}</div>
+    <div class="alert alert-success" style="background: #dcfce7; color: #15803d; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #bbf7d0;">
+        ✅ <strong>Thành công!</strong> {{ success }}
+    </div>
     {% endif %}
     {% if error %}
-    <div class="alert alert-error">⚠️ {{ error }}</div>
+    <div class="alert alert-error" style="background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #fecaca;">
+        ⚠️ <strong>Lỗi!</strong> {{ error }}
+    </div>
     {% endif %}
 
-    <!-- Form thêm sách mới -->
-    <div class="card" style="margin-bottom:1.5rem">
-        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.2rem">➕ Thêm sách mới</h3>
+    <div class="modern-card">
+        <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--text-main); margin-top: 0; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>➕</span> Thêm sách mới
+        </h3>
         <form method="post">
             {% csrf_token %}
             <input type="hidden" name="action" value="create">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
                 <div class="form-group">
-                    <label>Tên sách <span style="color:var(--red)">*</span></label>
-                    <input type="text" name="title" required placeholder="Ví dụ: Truyện Kiều">
+                    <label>Tên sách <span style="color:var(--danger)">*</span></label>
+                    <input type="text" name="title" required placeholder="Ví dụ: Truyện Kiều" class="modern-input">
                 </div>
                 <div class="form-group">
-                    <label>Tác giả <span style="color:var(--red)">*</span></label>
-                    <input type="text" name="author" required placeholder="Ví dụ: Nguyễn Du">
+                    <label>Tác giả <span style="color:var(--danger)">*</span></label>
+                    <input type="text" name="author" required placeholder="Ví dụ: Nguyễn Du" class="modern-input">
                 </div>
                 <div class="form-group">
-                    <label>Giá bán (VND) <span style="color:var(--red)">*</span></label>
-                    <input type="number" name="price" required placeholder="85000" step="1000" min="0">
+                    <label>Giá bán (VND) <span style="color:var(--danger)">*</span></label>
+                    <input type="number" name="price" required placeholder="85000" step="1000" min="0" class="modern-input">
                 </div>
                 <div class="form-group">
-                    <label>Số lượng tồn kho <span style="color:var(--red)">*</span></label>
-                    <input type="number" name="stock" required placeholder="100" min="0">
+                    <label>Số lượng tồn kho <span style="color:var(--danger)">*</span></label>
+                    <input type="number" name="stock" required placeholder="100" min="0" class="modern-input">
                 </div>
                 <div class="form-group">
                     <label>Thể loại</label>
-                    <select name="category" class="form-select">
+                    <select name="category" class="modern-select">
                         <option value="">— Chọn thể loại —</option>
                         {% for cat in categories %}
                         <option value="{{ cat.name }}">{{ cat.name }}</option>
@@ -106,78 +215,76 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>NXB / Nhà xuất bản</label>
-                    <input type="text" name="publisher" placeholder="NXB Kim Đồng">
+                    <label>Nhà xuất bản</label>
+                    <input type="text" name="publisher" placeholder="NXB Kim Đồng" class="modern-input">
                 </div>
-                <div class="form-group" style="grid-column:span 2">
+                <div class="form-group" style="grid-column: 1 / -1;">
                     <label>Mô tả sách</label>
-                    <textarea name="description" rows="3" placeholder="Tóm tắt nội dung sách..."></textarea>
+                    <textarea name="description" rows="3" placeholder="Tóm tắt nội dung sách..." class="modern-textarea"></textarea>
                 </div>
             </div>
-            <button type="submit" class="btn btn-success">✅ Thêm sách</button>
+            <div style="display: flex; justify-content: flex-end;">
+                <button type="submit" class="modern-btn btn-success">Lưu sách mới</button>
+            </div>
         </form>
     </div>
 
-    <!-- Danh sách sách -->
-    <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-            <h3 style="font-size:1rem;font-weight:700">📋 Danh sách sách ({{ books|length }} cuốn)</h3>
+    <div class="modern-card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid var(--border-soft); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin: 0;">📋 Danh sách sách <span style="color: var(--text-muted); font-weight: 500;">({{ books|length }} cuốn)</span></h3>
         </div>
-        <div style="overflow-x:auto">
-            <table>
+        <div style="overflow-x: auto;">
+            <table class="modern-table">
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th style="width: 50px;">#</th>
                         <th>Tên sách</th>
                         <th>Tác giả</th>
                         <th>Thể loại</th>
                         <th>Giá</th>
                         <th>Tồn kho</th>
-                        <th>Thao tác</th>
+                        <th style="text-align: right;">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for b in books %}
                     <tr>
-                        <td style="color:var(--muted);font-size:.78rem">{{ b.id }}</td>
-                        <td style="font-weight:600;max-width:200px">{{ b.title }}</td>
-                        <td style="color:var(--muted)">{{ b.author }}</td>
+                        <td style="color: var(--text-muted);">{{ b.id }}</td>
+                        <td style="font-weight: 600; color: var(--text-main); max-width: 200px;">{{ b.title }}</td>
+                        <td style="color: var(--text-muted);">{{ b.author }}</td>
                         <td>
                             {% if b.category %}
-                            <span
-                                style="background:rgba(124,58,237,.15);color:var(--accent2);padding:.1rem .5rem;border-radius:50px;font-size:.75rem;font-weight:600">
-                                {{ b.category }}
-                            </span>
+                                <span class="badge badge-category">{{ b.category }}</span>
                             {% else %}
-                            <span style="color:var(--muted);font-size:.78rem">—</span>
+                                <span style="color:var(--text-muted);">—</span>
                             {% endif %}
                         </td>
-                        <td style="white-space:nowrap">{{ b.price|floatformat:0 }} đ</td>
+                        <td style="font-weight: 500;">{{ b.price|floatformat:0 }} đ</td>
                         <td>
                             {% if b.stock == 0 %}
-                            <span class="status status-cancelled">Hết hàng</span>
-                            {% elif b.stock < 10 %} <span class="status status-pending">⚠ {{ b.stock }} còn</span>
-                                {% else %}
-                                <span class="stock-ok">{{ b.stock }}</span>
-                                {% endif %}
+                                <span class="badge badge-out">Hết hàng</span>
+                            {% elif b.stock < 10 %} 
+                                <span class="badge badge-low">⚠ Còn {{ b.stock }}</span>
+                            {% else %}
+                                <span class="badge badge-ok">{{ b.stock }}</span>
+                            {% endif %}
                         </td>
-                        <td style="white-space:nowrap">
-                            <button
-                                onclick="openEdit({{ b.id }},'{{ b.title|escapejs }}','{{ b.author|escapejs }}',{{ b.price }},{{ b.stock }},'{{ b.category|default:''|escapejs }}','{{ b.description|default:''|escapejs }}')"
-                                class="btn btn-outline btn-sm">✏️ Sửa</button>
-                            <form method="post" style="display:inline"
-                                onsubmit="return confirm('Xóa sách «{{ b.title }}»? Hành động này không thể hoàn tác!')">
+                        <td style="text-align: right; white-space: nowrap;">
+                            <button onclick="openEdit({{ b.id }},'{{ b.title|escapejs }}','{{ b.author|escapejs }}',{{ b.price }},{{ b.stock }},'{{ b.category|default:''|escapejs }}','{{ b.description|default:''|escapejs }}')" class="modern-btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">✏️ Sửa</button>
+                            
+                            <form method="post" style="display: inline-block; margin-left: 0.25rem;" onsubmit="return confirm('Xóa sách «{{ b.title }}»? Hành động này không thể hoàn tác!')">
                                 {% csrf_token %}
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="book_id" value="{{ b.id }}">
-                                <button type="submit" class="btn btn-danger btn-sm">🗑️ Xóa</button>
+                                <button type="submit" class="modern-btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🗑️ Xóa</button>
                             </form>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">
-                            Chưa có sách nào. Hãy thêm sách mới!
+                        <td colspan="7" style="text-align:center; color:var(--text-muted); padding: 3rem 1rem;">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">📚</div>
+                            Chưa có sách nào. Hãy thêm sách mới ở form phía trên!
                         </td>
                     </tr>
                     {% endfor %}
@@ -187,51 +294,50 @@
     </div>
 </div>
 
-<!-- Modal sửa sách -->
 <div id="edit-modal" class="modal-overlay">
     <div class="modal-box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem">
-            <h3 style="font-weight:700;font-size:1.05rem">✏️ Chỉnh sửa sách</h3>
-            <button onclick="closeModal()"
-                style="background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer;line-height:1">✕</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-soft);">
+            <h3 style="font-weight: 800; font-size: 1.25rem; margin: 0; color: var(--text-main);">✏️ Cập nhật thông tin</h3>
+            <button onclick="closeModal()" style="background:none; border:none; color:var(--text-muted); font-size: 1.5rem; cursor:pointer; padding: 0.5rem; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                &times;
+            </button>
         </div>
         <form id="edit-form" method="post" action="">
             {% csrf_token %}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem">
-                <div class="form-group">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;">
+                <div class="form-group" style="grid-column: 1 / -1;">
                     <label>Tên sách</label>
-                    <input type="text" id="e-title" name="title" required>
+                    <input type="text" id="e-title" name="title" required class="modern-input">
                 </div>
                 <div class="form-group">
                     <label>Tác giả</label>
-                    <input type="text" id="e-author" name="author" required>
+                    <input type="text" id="e-author" name="author" required class="modern-input">
                 </div>
                 <div class="form-group">
-                    <label>Giá bán (VND)</label>
-                    <input type="number" id="e-price" name="price" step="1000" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Tồn kho</label>
-                    <input type="number" id="e-stock" name="stock" min="0">
-                </div>
-                <div class="form-group" style="grid-column:span 2">
                     <label>Thể loại</label>
-                    <select id="e-category" name="category" class="form-select">
+                    <select id="e-category" name="category" class="modern-select">
                         <option value="">— Chọn thể loại —</option>
                         {% for cat in categories %}
                         <option value="{{ cat.name }}">{{ cat.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-group" style="grid-column:span 2">
+                <div class="form-group">
+                    <label>Giá bán (VND)</label>
+                    <input type="number" id="e-price" name="price" step="1000" min="0" class="modern-input">
+                </div>
+                <div class="form-group">
+                    <label>Tồn kho</label>
+                    <input type="number" id="e-stock" name="stock" min="0" class="modern-input">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
                     <label>Mô tả sách</label>
-                    <textarea id="e-description" name="description" rows="4"
-                        placeholder="Tóm tắt nội dung..."></textarea>
+                    <textarea id="e-description" name="description" rows="4" placeholder="Tóm tắt nội dung..." class="modern-textarea"></textarea>
                 </div>
             </div>
-            <div style="display:flex;gap:.8rem;margin-top:.5rem">
-                <button type="submit" class="btn btn-primary" style="flex:1">💾 Lưu thay đổi</button>
-                <button type="button" onclick="closeModal()" class="btn btn-outline">Hủy</button>
+            <div style="display: flex; gap: 1rem; margin-top: 2rem; justify-content: flex-end;">
+                <button type="button" onclick="closeModal()" class="modern-btn btn-outline">Hủy bỏ</button>
+                <button type="submit" class="modern-btn btn-primary">💾 Cập nhật ngay</button>
             </div>
         </form>
     </div>
@@ -247,21 +353,35 @@
         document.getElementById('e-price').value = price;
         document.getElementById('e-stock').value = stock;
         document.getElementById('e-description').value = desc || '';
-        // Set category dropdown
+        
         var sel = document.getElementById('e-category');
         for (var i = 0; i < sel.options.length; i++) {
             sel.options[i].selected = (sel.options[i].value === cat);
         }
+        
+        // Thêm class để kích hoạt animation
         document.getElementById('edit-modal').classList.add('active');
+        
+        // Disable scroll trên body khi mở modal
+        document.body.style.overflow = 'hidden';
     }
 
     function closeModal() {
         document.getElementById('edit-modal').classList.remove('active');
+        // Trả lại scroll cho body
+        document.body.style.overflow = 'auto';
     }
 
-    // Đóng modal khi click bên ngoài
+    // Đóng modal khi click ra ngoài overlay
     document.getElementById('edit-modal').addEventListener('click', function (e) {
         if (e.target === this) closeModal();
+    });
+
+    // Cải thiện: Đóng modal khi nhấn phím ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === "Escape" && document.getElementById('edit-modal').classList.contains('active')) {
+            closeModal();
+        }
     });
 </script>
 {% endblock %}

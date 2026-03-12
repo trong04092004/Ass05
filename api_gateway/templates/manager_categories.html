@@ -1,188 +1,401 @@
 {% extends "base.html" %}
-{% block title %}Quản lý thể loại — Manager{% endblock %}
-
-{% block extra_head %}
-<style>
-    .cat-badge {
-        display: inline-block;
-        background: rgba(124, 58, 237, .12);
-        color: var(--accent2);
-        border: 1px solid rgba(124, 58, 237, .25);
-        padding: .2rem .65rem;
-        border-radius: 50px;
-        font-size: .78rem;
-        font-weight: 600;
-    }
-
-    .warning-box {
-        background: rgba(245, 158, 11, .08);
-        border: 1px solid rgba(245, 158, 11, .3);
-        border-radius: 8px;
-        padding: .8rem 1rem;
-        font-size: .82rem;
-        color: var(--gold);
-        margin-bottom: 1rem;
-    }
-
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, .65);
-        z-index: 200;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .modal-overlay.active {
-        display: flex;
-    }
-
-    .modal-box {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 1.8rem;
-        width: 460px;
-        max-width: 95vw;
-    }
-</style>
-{% endblock %}
+{% block title %}Quản lý thể loại sách | Manager{% endblock %}
 
 {% block content %}
+
 <div class="container">
-    <h1 class="page-title">🏷️ Quản lý thể loại sách</h1>
 
-    {% if success %}
-    <div class="alert alert-success">✅ {{ success }}</div>
-    {% endif %}
-    {% if error %}
-    <div class="alert alert-error">⚠️ {{ error }}</div>
-    {% endif %}
+<h1 class="page-title">
+Quản lý thể loại sách
+</h1>
 
-    <div class="warning-box">
-        ⚠️ <strong>Lưu ý quan trọng:</strong> Khi đổi tên hoặc xóa thể loại, các sách đã gắn thể loại này
-        sẽ <strong>không tự động cập nhật</strong>. Hãy cập nhật thủ công danh sách sách sau khi thay đổi thể loại.
-    </div>
+{% if success %}
+<div class="alert alert-success">
+{{ success }}
+</div>
+{% endif %}
 
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:1.5rem;align-items:start">
+{% if error %}
+<div class="alert alert-error">
+{{ error }}
+</div>
+{% endif %}
 
-        <!-- Danh sách thể loại -->
-        <div class="card">
-            <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">
-                📋 Danh sách thể loại ({{ categories|length }})
-            </h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Tên thể loại</th>
-                        <th>Slug</th>
-                        <th>Mô tả</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for cat in categories %}
-                    <tr>
-                        <td style="color:var(--muted);font-size:.78rem">{{ cat.id }}</td>
-                        <td>
-                            <span class="cat-badge">{{ cat.name }}</span>
-                        </td>
-                        <td style="color:var(--muted);font-size:.78rem">{{ cat.slug }}</td>
-                        <td style="color:var(--muted);font-size:.82rem;max-width:200px">
-                            {{ cat.description|default:"—" }}
-                        </td>
-                        <td style="white-space:nowrap">
-                            <button
-                                onclick="openEditCat({{ cat.id }},'{{ cat.name|escapejs }}','{{ cat.description|default:''|escapejs }}')"
-                                class="btn btn-outline btn-sm">✏️ Sửa</button>
-                            <form method="post" style="display:inline"
-                                onsubmit="return confirm('⚠️ Xóa thể loại «{{ cat.name }}»?\n\nCác sách đang dùng thể loại này sẽ không bị xóa nhưng sẽ mất liên kết thể loại.')">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="delete_category">
-                                <input type="hidden" name="category_id" value="{{ cat.id }}">
-                                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">
-                            Chưa có thể loại nào. Hãy thêm mới!
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
 
-        <!-- Form thêm thể loại -->
-        <div class="card">
-            <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">➕ Thêm thể loại mới</h3>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="create_category">
-                <div class="form-group">
-                    <label>Tên thể loại <span style="color:var(--red)">*</span></label>
-                    <input type="text" name="name" required placeholder="Ví dụ: Văn học">
-                </div>
-                <div class="form-group">
-                    <label>Mô tả (tuỳ chọn)</label>
-                    <textarea name="description" rows="3" placeholder="Mô tả ngắn về thể loại này..."></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary btn-block">✅ Tạo thể loại</button>
-            </form>
-        </div>
-    </div>
+<div class="notice">
+
+<strong>Lưu ý:</strong>
+Khi đổi tên hoặc xóa thể loại, các sách đã gắn thể loại này sẽ
+<strong>không tự động cập nhật</strong>.
+
 </div>
 
-<!-- Modal sửa thể loại -->
-<div id="edit-cat-modal" class="modal-overlay">
-    <div class="modal-box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem">
-            <h3 style="font-weight:700;font-size:1.05rem">✏️ Chỉnh sửa thể loại</h3>
-            <button onclick="closeCatModal()"
-                style="background:none;border:none;color:var(--muted);font-size:1.4rem;cursor:pointer">✕</button>
-        </div>
-        <div class="warning-box" style="margin-bottom:1rem">
-            ⚠️ Đổi tên thể loại sẽ <strong>không tự cập nhật</strong> các sách đang dùng tên cũ.
-        </div>
-        <form id="edit-cat-form" method="post" action="">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="update_category">
-            <div class="form-group">
-                <label>Tên thể loại mới</label>
-                <input type="text" id="ec-name" name="name" required>
-            </div>
-            <div class="form-group">
-                <label>Mô tả</label>
-                <textarea id="ec-description" name="description" rows="3"></textarea>
-            </div>
-            <div style="display:flex;gap:.8rem">
-                <button type="submit" class="btn btn-primary" style="flex:1">💾 Lưu</button>
-                <button type="button" onclick="closeCatModal()" class="btn btn-outline">Hủy</button>
-            </div>
-        </form>
-    </div>
+
+
+<div class="layout">
+
+<!-- CATEGORY LIST -->
+
+<div class="card">
+
+<div class="card-header">
+
+<h3>
+Danh sách thể loại
+</h3>
+
+<span class="count">
+{{ categories|length }}
+</span>
+
 </div>
+
+
+<table class="table">
+
+<thead>
+
+<tr>
+<th>ID</th>
+<th>Tên thể loại</th>
+<th>Slug</th>
+<th>Mô tả</th>
+<th></th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for cat in categories %}
+
+<tr>
+
+<td class="id">
+{{ cat.id }}
+</td>
+
+<td>
+
+<span class="badge">
+{{ cat.name }}
+</span>
+
+</td>
+
+<td class="slug">
+{{ cat.slug }}
+</td>
+
+<td class="desc">
+{{ cat.description|default:"—" }}
+</td>
+
+<td>
+
+<button
+class="btn btn-outline btn-sm"
+onclick="openEditCat({{ cat.id }},'{{ cat.name|escapejs }}','{{ cat.description|default:''|escapejs }}')">
+
+Sửa
+
+</button>
+
+
+<form method="post" style="display:inline"
+onsubmit="return confirm('Xóa thể loại {{ cat.name }}?')">
+
+{% csrf_token %}
+
+<input type="hidden" name="action" value="delete_category">
+<input type="hidden" name="category_id" value="{{ cat.id }}">
+
+<button class="btn btn-danger btn-sm">
+Xóa
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+
+<td colspan="5" class="empty">
+
+Chưa có thể loại
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+
+
+<!-- CREATE CATEGORY -->
+
+<div class="card">
+
+<h3 class="form-title">
+
+Thêm thể loại mới
+
+</h3>
+
+<form method="post">
+
+{% csrf_token %}
+
+<input type="hidden" name="action" value="create_category">
+
+<label>Tên thể loại *</label>
+
+<input
+type="text"
+name="name"
+required
+placeholder="Ví dụ: Văn học"
+/>
+
+<label>Mô tả</label>
+
+<textarea
+name="description"
+rows="3"
+placeholder="Mô tả ngắn..."
+></textarea>
+
+<button type="submit" class="btn btn-primary btn-block">
+
+Tạo thể loại
+
+</button>
+
+</form>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- EDIT MODAL -->
+
+<div id="edit-cat-modal" class="modal">
+
+<div class="modal-box">
+
+<div class="modal-header">
+
+<h3>Chỉnh sửa thể loại</h3>
+
+<button onclick="closeCatModal()">✕</button>
+
+</div>
+
+<form id="edit-cat-form" method="post">
+
+{% csrf_token %}
+
+<input type="hidden" name="action" value="update_category">
+
+<label>Tên thể loại</label>
+
+<input type="text" id="ec-name" name="name" required>
+
+<label>Mô tả</label>
+
+<textarea id="ec-description" name="description"></textarea>
+
+<div class="modal-actions">
+
+<button class="btn btn-primary">
+Lưu
+</button>
+
+<button type="button"
+class="btn btn-outline"
+onclick="closeCatModal()">
+
+Hủy
+
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+</div>
+
+
+
+<style>
+
+.layout{
+display:grid;
+grid-template-columns:1fr 320px;
+gap:25px;
+margin-top:20px;
+}
+
+.notice{
+background:#fff3cd;
+border:1px solid #ffe69c;
+padding:12px;
+border-radius:8px;
+margin-bottom:20px;
+font-size:14px;
+}
+
+.card-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:15px;
+}
+
+.count{
+background:var(--primary);
+color:white;
+padding:4px 10px;
+border-radius:20px;
+font-size:12px;
+}
+
+.table{
+width:100%;
+border-collapse:collapse;
+}
+
+.table th{
+text-align:left;
+font-size:13px;
+color:var(--muted);
+border-bottom:1px solid var(--border);
+padding:10px;
+}
+
+.table td{
+padding:12px 10px;
+border-bottom:1px solid var(--border);
+font-size:14px;
+}
+
+.id{
+color:var(--muted);
+}
+
+.slug{
+color:var(--muted);
+}
+
+.desc{
+max-width:220px;
+color:var(--muted);
+}
+
+.badge{
+background:#eef2ff;
+color:#4f46e5;
+padding:4px 10px;
+border-radius:20px;
+font-size:13px;
+font-weight:600;
+}
+
+.empty{
+text-align:center;
+padding:30px;
+color:var(--muted);
+}
+
+.form-title{
+margin-bottom:15px;
+}
+
+.modal{
+display:none;
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.5);
+align-items:center;
+justify-content:center;
+}
+
+.modal.active{
+display:flex;
+}
+
+.modal-box{
+background:white;
+padding:25px;
+border-radius:10px;
+width:420px;
+}
+
+.modal-header{
+display:flex;
+justify-content:space-between;
+margin-bottom:15px;
+}
+
+.modal-actions{
+display:flex;
+gap:10px;
+margin-top:10px;
+}
+
+@media(max-width:900px){
+
+.layout{
+grid-template-columns:1fr;
+}
+
+}
+
+</style>
+
 {% endblock %}
 
+
+
 {% block extra_js %}
+
 <script>
-    function openEditCat(id, name, desc) {
-        document.getElementById('edit-cat-form').action = '/manager/categories/' + id + '/update/';
-        document.getElementById('ec-name').value = name;
-        document.getElementById('ec-description').value = desc;
-        document.getElementById('edit-cat-modal').classList.add('active');
-    }
 
-    function closeCatModal() {
-        document.getElementById('edit-cat-modal').classList.remove('active');
-    }
+function openEditCat(id,name,desc){
 
-    document.getElementById('edit-cat-modal').addEventListener('click', function (e) {
-        if (e.target === this) closeCatModal();
-    });
+document.getElementById('edit-cat-form').action =
+'/manager/categories/' + id + '/update/'
+
+document.getElementById('ec-name').value=name
+
+document.getElementById('ec-description').value=desc
+
+document.getElementById('edit-cat-modal').classList.add('active')
+
+}
+
+function closeCatModal(){
+
+document.getElementById('edit-cat-modal').classList.remove('active')
+
+}
+
 </script>
+
 {% endblock %}

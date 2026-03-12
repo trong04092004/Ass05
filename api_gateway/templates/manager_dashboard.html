@@ -3,167 +3,308 @@
 
 {% block extra_head %}
 <style>
-    .stat-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: center;
-        transition: transform .2s, border-color .2s;
-    }
 
-    .stat-card:hover {
-        transform: translateY(-3px);
-        border-color: rgba(124, 58, 237, .4);
-    }
+.stat-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:1rem;
+    margin-bottom:2rem;
+}
 
-    .stat-icon {
-        font-size: 2.2rem;
-        margin-bottom: .4rem;
-    }
+.stat-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:1.4rem;
+    text-align:center;
+    transition:all .2s;
+}
 
-    .stat-number {
-        font-size: 2rem;
-        font-weight: 700;
-        line-height: 1;
-        margin-bottom: .25rem;
-    }
+.stat-card:hover{
+    transform:translateY(-3px);
+    border-color:rgba(124,58,237,.4);
+}
 
-    .stat-label {
-        color: var(--muted);
-        font-size: .78rem;
-        font-weight: 500;
-    }
+.stat-icon{
+    font-size:2rem;
+    margin-bottom:.3rem;
+}
 
-    .quick-action {
-        display: flex;
-        align-items: center;
-        gap: .8rem;
-        padding: .9rem 1rem;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        color: var(--text);
-        font-size: .88rem;
-        font-weight: 500;
-        transition: background .2s, border-color .2s;
-        text-decoration: none;
-    }
+.stat-number{
+    font-size:1.9rem;
+    font-weight:700;
+    margin-bottom:.2rem;
+}
 
-    .quick-action:hover {
-        background: rgba(124, 58, 237, .08);
-        border-color: var(--accent);
-    }
+.stat-label{
+    font-size:.78rem;
+    color:var(--muted);
+}
 
-    .quick-action .ico {
-        font-size: 1.3rem;
-        flex-shrink: 0;
-    }
+
+.quick-action{
+    display:flex;
+    align-items:center;
+    gap:.8rem;
+    padding:.85rem .9rem;
+    border-radius:10px;
+    border:1px solid var(--border);
+    text-decoration:none;
+    color:var(--text);
+    font-size:.85rem;
+    transition:all .2s;
+}
+
+.quick-action:hover{
+    background:rgba(124,58,237,.08);
+    border-color:var(--accent);
+}
+
+.quick-action .ico{
+    font-size:1.2rem;
+}
+
+
+/* trạng thái đơn hàng */
+
+.status{
+    padding:.2rem .55rem;
+    border-radius:50px;
+    font-size:.75rem;
+    font-weight:600;
+}
+
+.status-pending{
+    background:rgba(245,158,11,.15);
+    color:var(--gold);
+}
+
+.status-confirmed{
+    background:rgba(34,197,94,.15);
+    color:var(--green);
+}
+
+.status-shipping{
+    background:rgba(59,130,246,.15);
+    color:#3b82f6;
+}
+
+.status-completed{
+    background:rgba(34,197,94,.2);
+    color:var(--green);
+}
+
+.status-cancelled{
+    background:rgba(239,68,68,.15);
+    color:var(--red);
+}
+
+.promo-box{
+    margin-top:1.2rem;
+    padding-top:1rem;
+    border-top:1px solid var(--border);
+}
+
+.promo-row{
+    display:flex;
+    justify-content:space-between;
+    font-size:.8rem;
+    margin-bottom:.4rem;
+}
+
 </style>
 {% endblock %}
 
+
 {% block content %}
+
 <div class="container">
-    <h1 class="page-title">📊 Dashboard Quản lý</h1>
 
-    <!-- Stats -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem">
-        <div class="stat-card">
-            <div class="stat-icon">📚</div>
-            <div class="stat-number" style="color:var(--accent2)">{{ books|length }}</div>
-            <div class="stat-label">Tổng số sách</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">📦</div>
-            <div class="stat-number" style="color:var(--gold)">{{ orders|length }}</div>
-            <div class="stat-label">Tổng đơn hàng</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">👥</div>
-            <div class="stat-number" style="color:var(--green)">{{ customers|length }}</div>
-            <div class="stat-label">Khách hàng</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">🎁</div>
-            <div class="stat-number" style="color:var(--red)">{{ promotions|length }}</div>
-            <div class="stat-label">Khuyến mãi</div>
-        </div>
-    </div>
+<h1 class="page-title">📊 Dashboard Quản lý</h1>
 
-    <div style="display:grid;grid-template-columns:1fr 300px;gap:1.5rem">
 
-        <!-- Đơn hàng gần nhất -->
-        <div class="card">
-            <div class="section-title">📋 Đơn hàng gần nhất</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Mã đơn</th>
-                        <th>Khách hàng</th>
-                        <th>Tổng tiền</th>
-                        <th>Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for order in orders|slice:":7" %}
-                    <tr>
-                        <td><strong>#{{ order.id }}</strong></td>
-                        <td style="color:var(--muted)">KH #{{ order.customer_id }}</td>
-                        <td style="color:var(--accent2);font-weight:600">{{ order.total_amount|floatformat:0 }} đ</td>
-                        <td>
-                            <span class="status status-{{ order.status }}">
-                                {% if order.status == 'pending' %}⏳ Chờ duyệt
-                                {% elif order.status == 'confirmed' %}✅ Xác nhận
-                                {% elif order.status == 'shipping' %}🚚 Đang giao
-                                {% elif order.status == 'completed' %}🎉 Hoàn thành
-                                {% elif order.status == 'cancelled' %}❌ Đã hủy
-                                {% else %}{{ order.status }}{% endif %}
-                            </span>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" style="text-align:center;color:var(--muted);padding:1.5rem">
-                            Chưa có đơn hàng nào
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<!-- Stats -->
 
-        <!-- Thao tác nhanh -->
-        <div class="card">
-            <div class="section-title">⚡ Thao tác nhanh</div>
-            <div style="display:flex;flex-direction:column;gap:.7rem">
-                <a href="{% url 'manager_promotions' %}" class="quick-action">
-                    <span class="ico">🎁</span>
-                    <span>Quản lý khuyến mãi</span>
-                </a>
-                <a href="{% url 'manager_categories' %}" class="quick-action">
-                    <span class="ico">🏷️</span>
-                    <span>Quản lý thể loại</span>
-                </a>
-                <a href="{% url 'staff_books' %}" class="quick-action" style="opacity:.6;pointer-events:none">
-                    <span class="ico">📚</span>
-                    <span>Xem kho sách</span>
-                </a>
-            </div>
+<div class="stat-grid">
 
-            <!-- Khuyến mãi đang chạy -->
-            {% if promotions %}
-            <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border)">
-                <div style="font-size:.8rem;color:var(--muted);font-weight:600;margin-bottom:.7rem">
-                    🔥 ĐANG KHUYẾN MÃI
-                </div>
-                {% for p in promotions|slice:":3" %}
-                <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.4rem">
-                    <span style="color:var(--text)">{{ p.name }}</span>
-                    <span style="color:var(--green);font-weight:700">-{{ p.discount_percent }}%</span>
-                </div>
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-    </div>
+<div class="stat-card">
+<div class="stat-icon">📚</div>
+<div class="stat-number" style="color:var(--accent2)">
+{{ books|length }}
 </div>
+<div class="stat-label">Tổng số sách</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-icon">📦</div>
+<div class="stat-number" style="color:var(--gold)">
+{{ orders|length }}
+</div>
+<div class="stat-label">Tổng đơn hàng</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-icon">👥</div>
+<div class="stat-number" style="color:var(--green)">
+{{ customers|length }}
+</div>
+<div class="stat-label">Khách hàng</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-icon">🎁</div>
+<div class="stat-number" style="color:var(--red)">
+{{ promotions|length }}
+</div>
+<div class="stat-label">Khuyến mãi</div>
+</div>
+
+</div>
+
+
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:1.5rem">
+
+<!-- Orders -->
+
+<div class="card">
+
+<h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">
+📋 Đơn hàng gần nhất
+</h3>
+
+<table>
+
+<thead>
+<tr>
+<th>Mã đơn</th>
+<th>Khách hàng</th>
+<th>Tổng tiền</th>
+<th>Trạng thái</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for order in orders|slice:":7" %}
+
+<tr>
+
+<td>
+<strong>#{{ order.id }}</strong>
+</td>
+
+<td style="color:var(--muted)">
+KH #{{ order.customer_id }}
+</td>
+
+<td style="color:var(--accent2);font-weight:600">
+{{ order.total_amount|floatformat:0 }} đ
+</td>
+
+<td>
+
+<span class="status status-{{ order.status }}">
+
+{% if order.status == 'pending' %}
+⏳ Chờ duyệt
+
+{% elif order.status == 'confirmed' %}
+✅ Xác nhận
+
+{% elif order.status == 'shipping' %}
+🚚 Đang giao
+
+{% elif order.status == 'completed' %}
+🎉 Hoàn thành
+
+{% elif order.status == 'cancelled' %}
+❌ Đã hủy
+
+{% else %}
+{{ order.status }}
+
+{% endif %}
+
+</span>
+
+</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+<td colspan="4" style="text-align:center;color:var(--muted);padding:2rem">
+Chưa có đơn hàng nào
+</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+
+
+<!-- Quick Actions -->
+
+<div class="card">
+
+<h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem">
+⚡ Thao tác nhanh
+</h3>
+
+<div style="display:flex;flex-direction:column;gap:.6rem">
+
+<a href="{% url 'manager_promotions' %}" class="quick-action">
+<span class="ico">🎁</span>
+<span>Quản lý khuyến mãi</span>
+</a>
+
+<a href="{% url 'manager_categories' %}" class="quick-action">
+<span class="ico">🏷️</span>
+<span>Quản lý thể loại</span>
+</a>
+
+<a href="{% url 'staff_books' %}" class="quick-action">
+<span class="ico">📚</span>
+<span>Xem kho sách</span>
+</a>
+
+</div>
+
+
+{% if promotions %}
+
+<div class="promo-box">
+
+<div style="font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:.6rem">
+🔥 ĐANG KHUYẾN MÃI
+</div>
+
+{% for p in promotions|slice:":3" %}
+
+<div class="promo-row">
+<span>{{ p.name }}</span>
+<span style="color:var(--green);font-weight:700">
+-{{ p.discount_percent }}%
+</span>
+</div>
+
+{% endfor %}
+
+</div>
+
+{% endif %}
+
+</div>
+
+</div>
+
+</div>
+
 {% endblock %}

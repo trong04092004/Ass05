@@ -3,80 +3,143 @@
 
 {% block extra_head %}
 <style>
-    @keyframes pop {
-        0% {
-            transform: scale(0.5);
-            opacity: 0
-        }
 
-        80% {
-            transform: scale(1.1)
-        }
+@keyframes pop {
+    0%{transform:scale(.5);opacity:0}
+    80%{transform:scale(1.1)}
+    100%{transform:scale(1);opacity:1}
+}
 
-        100% {
-            transform: scale(1);
-            opacity: 1
-        }
-    }
+@keyframes slideUp {
+    from{transform:translateY(20px);opacity:0}
+    to{transform:translateY(0);opacity:1}
+}
 
-    @keyframes slideUp {
-        from {
-            transform: translateY(20px);
-            opacity: 0
-        }
+.success-container{
+    max-width:560px;
+    margin:auto;
+    text-align:center;
+    animation:slideUp .5s ease;
+}
 
-        to {
-            transform: translateY(0);
-            opacity: 1
-        }
-    }
+.success-icon{
+    font-size:4.5rem;
+    margin-bottom:.6rem;
+    display:inline-block;
+    animation:pop .5s ease;
+}
+
+.success-desc{
+    color:var(--muted);
+    margin-bottom:1.8rem;
+    font-size:.92rem;
+}
+
+.order-info{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1rem;
+    font-size:.88rem;
+}
+
+.info-label{
+    color:var(--muted);
+    font-size:.8rem;
+    margin-bottom:.15rem;
+}
+
+.info-value{
+    font-weight:600;
+}
+
+.order-total{
+    grid-column:1/-1;
+    border-top:1px solid var(--border);
+    padding-top:.8rem;
+    margin-top:.3rem;
+}
+
+.total-value{
+    font-weight:700;
+    color:var(--accent2);
+    font-size:1.25rem;
+}
+
+.action-buttons{
+    display:flex;
+    justify-content:center;
+    gap:.8rem;
+    margin-top:1.5rem;
+}
+
 </style>
 {% endblock %}
 
+
 {% block content %}
-<div style="min-height:calc(100vh - 64px);display:flex;align-items:center;justify-content:center;padding:2rem">
-    <div style="max-width:540px;width:100%;text-align:center;animation:slideUp .5s ease">
+<div class="container">
 
-        <div style="font-size:5rem;margin-bottom:.8rem;display:inline-block;animation:pop .5s ease">✅</div>
-        <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:.5rem">Đặt hàng thành công!</h1>
-        <p style="color:var(--muted);margin-bottom:1.8rem;font-size:.93rem">
-            Đơn hàng <strong style="color:var(--text)">#{{ order.id }}</strong> đã được xác nhận.<br>
-            Cảm ơn bạn đã mua sách tại BookStore! 🎉
-        </p>
+<h1 class="page-title">✅ Đặt hàng thành công</h1>
 
-        <div class="card" style="text-align:left;margin-bottom:1.8rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:.88rem">
+<div class="success-container">
+
+    <div class="success-icon">🎉</div>
+
+    <p class="success-desc">
+        Đơn hàng <strong style="color:var(--text)">#{{ order.id }}</strong> đã được tạo thành công.<br>
+        Cảm ơn bạn đã mua sách tại <strong>BookStore</strong>!
+    </p>
+
+    <div class="card">
+
+        <div class="order-info">
+
+            <div>
+                <div class="info-label">Mã đơn hàng</div>
+                <div class="info-value">#{{ order.id }}</div>
+            </div>
+
+            <div>
+                <div class="info-label">Trạng thái</div>
                 <div>
-                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Mã đơn
-                        hàng</span>
-                    <div style="font-weight:700;font-size:.95rem">#{{ order.id }}</div>
-                </div>
-                <div>
-                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Trạng thái</span>
-                    <div><span class="status status-pending">Đang xử lý</span></div>
-                </div>
-                <div>
-                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Thanh toán</span>
-                    <div style="font-weight:600">{{ payment_display }}</div>
-                </div>
-                <div>
-                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Vận chuyển</span>
-                    <div style="font-weight:600">{{ shipping_display }}</div>
-                </div>
-                <div style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:.8rem;margin-top:.2rem">
-                    <span style="color:var(--muted);font-size:.8rem;display:block;margin-bottom:.2rem">Tổng tiền</span>
-                    <div style="font-weight:700;color:var(--accent2);font-size:1.2rem">
-                        {{ order.total_amount|floatformat:0 }} đ
-                    </div>
+                    <span class="status status-pending">Đang xử lý</span>
                 </div>
             </div>
-        </div>
 
-        <div style="display:flex;gap:.8rem;justify-content:center">
-            <a href="{% url 'order_history' %}" class="btn btn-primary">📋 Xem đơn hàng của tôi</a>
-            <a href="{% url 'home' %}" class="btn btn-outline">🏠 Về trang chủ</a>
+            <div>
+                <div class="info-label">Thanh toán</div>
+                <div class="info-value">{{ payment_display }}</div>
+            </div>
+
+            <div>
+                <div class="info-label">Vận chuyển</div>
+                <div class="info-value">{{ shipping_display }}</div>
+            </div>
+
+            <div class="order-total">
+                <div class="info-label">Tổng tiền</div>
+                <div class="total-value">
+                    {{ order.total_amount|floatformat:0 }} đ
+                </div>
+            </div>
+
         </div>
 
     </div>
+
+    <div class="action-buttons">
+
+        <a href="{% url 'order_history' %}" class="btn btn-primary">
+            📦 Xem đơn hàng
+        </a>
+
+        <a href="{% url 'home' %}" class="btn btn-outline">
+            🏠 Về trang chủ
+        </a>
+
+    </div>
+
+</div>
+
 </div>
 {% endblock %}

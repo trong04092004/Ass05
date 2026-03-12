@@ -3,241 +3,350 @@
 
 {% block extra_head %}
 <style>
-    .order-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 1.3rem 1.5rem;
-        margin-bottom: 1.2rem;
-        transition: border-color .2s;
-    }
 
-    .order-card:hover {
-        border-color: rgba(124, 58, 237, .4);
-    }
+.order-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:1.4rem 1.6rem;
+    margin-bottom:1.2rem;
+    transition:all .2s;
+}
 
-    .order-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-        flex-wrap: wrap;
-        gap: .5rem;
-    }
+.order-card:hover{
+    border-color:rgba(124,58,237,.4);
+    transform:translateY(-2px);
+}
 
-    .order-id {
-        font-weight: 700;
-        font-size: 1rem;
-    }
+.order-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:.6rem;
+    margin-bottom:1rem;
+}
 
-    .order-date {
-        color: var(--muted);
-        font-size: .8rem;
-        margin-left: .6rem;
-    }
+.order-id{
+    font-weight:700;
+    font-size:1rem;
+}
 
-    .order-total {
-        font-weight: 700;
-        color: var(--accent2);
-        font-size: 1rem;
-    }
+.order-date{
+    color:var(--muted);
+    font-size:.8rem;
+    margin-left:.5rem;
+}
 
-    .order-items {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        overflow: hidden;
-        margin-bottom: 1rem;
-    }
+.order-total{
+    font-weight:700;
+    color:var(--accent2);
+    font-size:1rem;
+}
 
-    .order-item-row {
-        display: flex;
-        align-items: center;
-        gap: .8rem;
-        padding: .65rem 1rem;
-        border-bottom: 1px solid var(--border);
-        font-size: .84rem;
-    }
+.order-items{
+    border:1px solid var(--border);
+    border-radius:8px;
+    overflow:hidden;
+    margin-bottom:1rem;
+}
 
-    .order-item-row:last-child {
-        border-bottom: none;
-    }
+.order-item-row{
+    display:flex;
+    align-items:center;
+    gap:.8rem;
+    padding:.65rem 1rem;
+    border-bottom:1px solid var(--border);
+    font-size:.84rem;
+}
 
-    .order-item-icon {
-        width: 36px;
-        height: 48px;
-        background: var(--surface2);
-        border-radius: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
+.order-item-row:last-child{
+    border-bottom:none;
+}
 
-    .order-meta {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: .6rem;
-        font-size: .82rem;
-    }
+.order-item-icon{
+    width:36px;
+    height:48px;
+    background:var(--surface2);
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.2rem;
+    flex-shrink:0;
+}
 
-    .meta-box {
-        background: var(--surface2);
-        border-radius: 8px;
-        padding: .65rem 1rem;
-        display: flex;
-        flex-direction: column;
-        gap: .3rem;
-    }
+.qty-badge{
+    background:rgba(124,58,237,.12);
+    color:var(--accent2);
+    border:1px solid rgba(124,58,237,.25);
+    padding:.15rem .5rem;
+    border-radius:50px;
+    font-size:.72rem;
+    font-weight:600;
+}
 
-    .meta-label {
-        color: var(--muted);
-        font-size: .75rem;
-        font-weight: 500;
-    }
+.meta-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:.7rem;
+}
 
-    .meta-value {
-        color: var(--text);
-        font-weight: 600;
-        font-size: .82rem;
-    }
+.meta-box{
+    background:var(--surface2);
+    border-radius:8px;
+    padding:.7rem 1rem;
+    display:flex;
+    flex-direction:column;
+    gap:.3rem;
+}
 
-    .method-map-cod {
-        color: var(--green);
-    }
+.meta-label{
+    color:var(--muted);
+    font-size:.75rem;
+    font-weight:500;
+}
 
-    .method-map-bank {
-        color: var(--gold);
-    }
+.meta-value{
+    color:var(--text);
+    font-weight:600;
+    font-size:.82rem;
+}
 
-    .method-map-card {
-        color: var(--accent2);
-    }
-
-    .method-map-standard {
-        color: var(--muted);
-    }
-
-    .method-map-express {
-        color: var(--accent2);
-    }
 </style>
 {% endblock %}
 
+
 {% block content %}
+
 <div class="container">
-    <h1 class="page-title">📦 Đơn hàng của tôi</h1>
 
-    {% if orders %}
-    {% for order in orders %}
-    <div class="order-card">
-        <!-- Header: ID + Ngày + Tổng + Status -->
-        <div class="order-header">
-            <div>
-                <span class="order-id">Đơn hàng #{{ order.id }}</span>
-                <span class="order-date">
-                    — Ngày đặt:
-                    {% if order.created_at %}
-                    {{ order.created_at|slice:":10" }}
-                    {% else %}
-                    —
-                    {% endif %}
-                </span>
-            </div>
-            <div style="display:flex;align-items:center;gap:.8rem">
-                <span class="order-total">{{ order.total_amount|floatformat:0 }} đ</span>
-                <span class="status status-{{ order.status }}">
-                    {% if order.status == 'pending' %}⏳ Chờ xử lý
-                    {% elif order.status == 'confirmed' %}✅ Đã xác nhận
-                    {% elif order.status == 'shipping' %}🚚 Đang giao
-                    {% elif order.status == 'completed' %}✔️ Hoàn thành
-                    {% elif order.status == 'cancelled' %}❌ Đã hủy
-                    {% else %}{{ order.status|title }}
-                    {% endif %}
-                </span>
-            </div>
-        </div>
+<h1 class="page-title">📦 Đơn hàng của tôi</h1>
 
-        <!-- Danh sách sản phẩm -->
-        <div style="margin-bottom:.8rem;font-size:.82rem;color:var(--muted);font-weight:600;margin-left:.2rem">
-            Sản phẩm trong đơn
-        </div>
-        <div class="order-items">
-            {% for item in order.items %}
-            <div class="order-item-row">
-                <div class="order-item-icon">📖</div>
-                <div style="flex:1;min-width:0">
-                    <div
-                        style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                        {{ item.book_title }}
-                    </div>
-                    <div style="color:var(--muted);font-size:.78rem;margin-top:.15rem">
-                        × {{ item.quantity }} cuốn
-                    </div>
-                </div>
-                <div style="font-weight:700;color:var(--accent2);white-space:nowrap">
-                    {{ item.price|floatformat:0 }} đ
-                </div>
-            </div>
-            {% empty %}
-            <div style="padding:.8rem 1rem;color:var(--muted);font-size:.82rem">Không có sản phẩm</div>
-            {% endfor %}
-        </div>
+{% if orders %}
 
-        <!-- Thông tin thanh toán & vận chuyển -->
-        <div class="order-meta">
-            {% if order.payment %}
-            <div class="meta-box">
-                <span class="meta-label">💰 Thanh toán</span>
-                <span class="meta-value">
-                    {% if order.payment.payment_method == 'cod' %}💵 COD
-                    {% elif order.payment.payment_method == 'bank' %}🏦 Chuyển khoản
-                    {% elif order.payment.payment_method == 'card' %}💳 Thẻ tín dụng
-                    {% else %}{{ order.payment.payment_method|upper }}
-                    {% endif %}
-                </span>
-                <span class="status status-{{ order.payment.status }}" style="align-self:flex-start;margin-top:.15rem">
-                    {{ order.payment.status|title }}
-                </span>
-            </div>
-            {% else %}
-            <div class="meta-box">
-                <span class="meta-label">💰 Thanh toán</span>
-                <span class="meta-value" style="color:var(--muted)">Chưa có thông tin</span>
-            </div>
-            {% endif %}
+{% for order in orders %}
 
-            {% if order.shipping %}
-            <div class="meta-box">
-                <span class="meta-label">🚚 Giao hàng</span>
-                <span class="meta-value">
-                    {% if order.shipping.shipping_method == 'standard' %}📦 Tiêu chuẩn
-                    {% elif order.shipping.shipping_method == 'express' %}⚡ Nhanh
-                    {% else %}{{ order.shipping.shipping_method|title }}
-                    {% endif %}
-                </span>
-                <span class="status status-{{ order.shipping.status }}" style="align-self:flex-start;margin-top:.15rem">
-                    {{ order.shipping.status|title }}
-                </span>
-            </div>
-            {% else %}
-            <div class="meta-box">
-                <span class="meta-label">🚚 Giao hàng</span>
-                <span class="meta-value" style="color:var(--muted)">Chưa có thông tin</span>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
+<div class="order-card">
 
-    {% else %}
-    <div class="empty-state">
-        <div class="ico">📦</div>
-        <p style="margin-bottom:1.5rem">Chưa có đơn hàng nào<br>
-            <span style="font-size:.85rem">Hãy mua sắm và đặt hàng ngay!</span>
-        </p>
-        <a href="{% url 'book_list' %}" class="btn btn-primary">Mua sách ngay</a>
-    </div>
-    {% endif %}
+<!-- Header -->
+
+<div class="order-header">
+
+<div>
+<span class="order-id">
+🧾 Đơn hàng #{{ order.id }}
+</span>
+
+<span class="order-date">
+— Ngày đặt:
+{% if order.created_at %}
+{{ order.created_at|slice:":10" }}
+{% else %}
+—
+{% endif %}
+</span>
 </div>
+
+<div style="display:flex;align-items:center;gap:.8rem">
+
+<span class="order-total">
+{{ order.total_amount|floatformat:0 }} đ
+</span>
+
+<span class="status status-{{ order.status }}">
+
+{% if order.status == 'pending' %}
+⏳ Chờ xử lý
+
+{% elif order.status == 'confirmed' %}
+✅ Đã xác nhận
+
+{% elif order.status == 'shipping' %}
+🚚 Đang giao
+
+{% elif order.status == 'completed' %}
+🎉 Hoàn thành
+
+{% elif order.status == 'cancelled' %}
+❌ Đã hủy
+
+{% else %}
+{{ order.status|title }}
+
+{% endif %}
+
+</span>
+
+</div>
+
+</div>
+
+
+<!-- Items -->
+
+<div style="margin-bottom:.6rem;font-size:.82rem;color:var(--muted);font-weight:600">
+📚 Sản phẩm trong đơn
+</div>
+
+<div class="order-items">
+
+{% for item in order.items %}
+
+<div class="order-item-row">
+
+<div class="order-item-icon">
+📖
+</div>
+
+<div style="flex:1;min-width:0">
+
+<div style="font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+{{ item.book_title }}
+</div>
+
+<div style="color:var(--muted);font-size:.78rem;margin-top:.15rem">
+<span class="qty-badge">
+× {{ item.quantity }} cuốn
+</span>
+</div>
+
+</div>
+
+<div style="font-weight:700;color:var(--accent2);white-space:nowrap">
+{{ item.price|floatformat:0 }} đ
+</div>
+
+</div>
+
+{% empty %}
+
+<div style="padding:.8rem 1rem;color:var(--muted);font-size:.82rem">
+Không có sản phẩm
+</div>
+
+{% endfor %}
+
+</div>
+
+
+<!-- Payment + Shipping -->
+
+<div class="meta-grid">
+
+{% if order.payment %}
+
+<div class="meta-box">
+
+<span class="meta-label">
+💰 Thanh toán
+</span>
+
+<span class="meta-value">
+
+{% if order.payment.payment_method == 'cod' %}
+💵 COD
+
+{% elif order.payment.payment_method == 'bank' %}
+🏦 Chuyển khoản
+
+{% elif order.payment.payment_method == 'card' %}
+💳 Thẻ tín dụng
+
+{% else %}
+{{ order.payment.payment_method|upper }}
+
+{% endif %}
+
+</span>
+
+<span class="status status-{{ order.payment.status }}" style="align-self:flex-start;margin-top:.2rem">
+{{ order.payment.status|title }}
+</span>
+
+</div>
+
+{% else %}
+
+<div class="meta-box">
+<span class="meta-label">💰 Thanh toán</span>
+<span class="meta-value" style="color:var(--muted)">
+Chưa có thông tin
+</span>
+</div>
+
+{% endif %}
+
+
+{% if order.shipping %}
+
+<div class="meta-box">
+
+<span class="meta-label">
+🚚 Giao hàng
+</span>
+
+<span class="meta-value">
+
+{% if order.shipping.shipping_method == 'standard' %}
+📦 Tiêu chuẩn
+
+{% elif order.shipping.shipping_method == 'express' %}
+⚡ Nhanh
+
+{% else %}
+{{ order.shipping.shipping_method|title }}
+
+{% endif %}
+
+</span>
+
+<span class="status status-{{ order.shipping.status }}" style="align-self:flex-start;margin-top:.2rem">
+{{ order.shipping.status|title }}
+</span>
+
+</div>
+
+{% else %}
+
+<div class="meta-box">
+<span class="meta-label">🚚 Giao hàng</span>
+<span class="meta-value" style="color:var(--muted)">
+Chưa có thông tin
+</span>
+</div>
+
+{% endif %}
+
+</div>
+
+</div>
+
+{% endfor %}
+
+{% else %}
+
+<div class="empty-state">
+
+<div class="ico">
+📦
+</div>
+
+<p style="margin-bottom:1.4rem">
+Bạn chưa có đơn hàng nào<br>
+<span style="font-size:.85rem">
+Hãy khám phá kho sách và đặt đơn đầu tiên!
+</span>
+</p>
+
+<a href="{% url 'book_list' %}" class="btn btn-primary">
+📚 Mua sách ngay
+</a>
+
+</div>
+
+{% endif %}
+
+</div>
+
 {% endblock %}

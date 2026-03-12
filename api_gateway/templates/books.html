@@ -1,87 +1,335 @@
 {% extends "base.html" %}
-{% block title %}Sách — BookStore{% endblock %}
+{% block title %}Danh sách sách | BookStore{% endblock %}
+
 {% block content %}
 <div class="container">
-    <h1 class="page-title">Danh mục sách</h1>
 
-    <form method="get" style="display:flex;gap:.8rem;margin-bottom:1.5rem;flex-wrap:wrap">
-        <input name="q" type="text" placeholder="Tìm sách, tác giả..." value="{{ q }}"
-            style="flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:.6rem 1rem;border-radius:8px;font-size:.88rem;outline:none">
+<h1 class="page-title">📚 Khám phá sách</h1>
 
-        <select name="category"
-            style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:.6rem 1rem;border-radius:8px;font-size:.88rem;outline:none">
-            <option value="">Tất cả thể loại</option>
-            {% for cat in categories %}
-            <option value="{{ cat.name }}" {% if selected_category == cat.name %}selected{% endif %}>
-                {{ cat.name }}
-            </option>
-            {% endfor %}
-        </select>
+<!-- SEARCH BAR -->
 
-        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+<form method="get" class="search-bar">
 
-        {% if q or selected_category %}
-        <a href="{% url 'book_list' %}" class="btn btn-outline">Xóa bộ lọc</a>
-        {% endif %}
-    </form>
+<input
+type="text"
+name="q"
+placeholder="Tìm sách hoặc tác giả..."
+value="{{ q }}">
 
-    <p style="color:var(--muted);font-size:.84rem;margin-bottom:1.2rem">
-        Hiển thị {{ books|length }} sách
-    </p>
+<button class="btn btn-primary">
+Tìm kiếm
+</button>
 
-    {% if books %}
-    <div class="books-grid">
-        {% for b in books %}
-        <div class="book-card" onclick="location.href='{% url 'book_detail' b.id %}'">
+</form>
 
-            <div class="cover">
-                {% if b.image_url %}
-                <img src="{{ b.image_url }}" alt="{{ b.title }}" onerror="this.parentElement.innerHTML='📖'">
-                {% else %}
-                📖
-                {% endif %}
+<div class="shop-layout">
 
-                {% if b.stock == 0 %}
-                <span class="stock-badge out-stock">Hết hàng</span>
-                {% elif b.stock < 10 %} <span class="stock-badge low-stock">Sắp hết</span>
-                    {% else %}
-                    <span class="stock-badge in-stock">Còn hàng</span>
-                    {% endif %}
-            </div>
+<!-- SIDEBAR -->
 
-            <div class="book-info">
-                <div class="stars">★★★★☆</div>
-                <div class="book-title">{{ b.title }}</div>
-                <div class="book-author">{{ b.author }}</div>
-                <div class="book-price">{{ b.price|floatformat:0 }} đ</div>
+<div class="filter-box">
 
-                {% if customer_id and role == 'customer' %}
-                <form method="post" action="{% url 'add_to_cart' b.id %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="next"
-                        value="{{ request.path }}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">
-                    <input type="hidden" name="quantity" value="1">
-                    <button type="submit" class="btn-add-cart">
-                        🛒 Thêm vào giỏ
-                    </button>
-                </form>
+<h3>Bộ lọc</h3>
 
-                {% elif not customer_id %}
-                <a href="{% url 'login_page' %}" class="btn-add-cart"
-                    style="display:block;text-align:center;padding:.45rem">
-                    🔑 Đăng nhập để mua
-                </a>
-                {% endif %}
-            </div>
+<form method="get">
 
-        </div>
-        {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty-state">
-        <div class="ico">🔍</div>
-        <p>Không tìm thấy sách phù hợp</p>
-    </div>
-    {% endif %}
+<input type="hidden" name="q" value="{{ q }}">
+
+<label>Thể loại</label>
+
+<select name="category">
+
+<option value="">Tất cả</option>
+
+{% for cat in categories %}
+
+<option value="{{ cat.name }}"
+{% if selected_category == cat.name %}selected{% endif %}>
+{{ cat.name }}
+</option>
+
+{% endfor %}
+
+</select>
+
+<button class="btn btn-outline btn-sm">
+Áp dụng
+</button>
+
+{% if q or selected_category %}
+
+<a href="{% url 'book_list' %}" class="clear-filter">
+Xóa bộ lọc
+</a>
+
+{% endif %}
+
+</form>
+
 </div>
+
+<!-- BOOK GRID -->
+
+<div class="book-area">
+
+<p class="result-text">
+Tìm thấy <strong>{{ books|length }}</strong> cuốn sách
+</p>
+
+{% if books %}
+
+<div class="grid">
+
+{% for b in books %}
+
+<div class="card-book">
+
+<a href="{% url 'book_detail' b.id %}">
+
+<div class="thumb">
+
+{% if b.image_url %}
+<img src="{{ b.image_url }}">
+{% else %}
+📖
+{% endif %}
+
+{% if b.stock == 0 %}
+<span class="badge out">Hết hàng</span>
+
+{% elif b.stock < 10 %}
+<span class="badge low">Sắp hết</span>
+
+{% else %}
+<span class="badge in">Còn hàng</span>
+{% endif %}
+
+</div>
+
+</a>
+
+<div class="info">
+
+<h4 class="title">
+{{ b.title }}
+</h4>
+
+<p class="author">
+{{ b.author }}
+</p>
+
+<div class="price">
+{{ b.price|floatformat:0 }} đ
+</div>
+
+{% if customer_id and role == 'customer' %}
+
+<form method="post" action="{% url 'add_to_cart' b.id %}">
+{% csrf_token %}
+
+<input type="hidden" name="quantity" value="1">
+
+<button class="btn btn-primary btn-block">
+Thêm vào giỏ
+</button>
+
+</form>
+
+{% elif not customer_id %}
+
+<a href="{% url 'login_page' %}" class="btn btn-outline btn-block">
+Đăng nhập để mua
+</a>
+
+{% endif %}
+
+</div>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="empty">
+
+<div class="icon">
+📚
+</div>
+
+<p>Không tìm thấy sách phù hợp</p>
+
+</div>
+
+{% endif %}
+
+</div>
+
+</div>
+
+</div>
+
+<style>
+
+.search-bar{
+display:flex;
+gap:10px;
+margin-bottom:30px;
+}
+
+.search-bar input{
+flex:1;
+padding:10px 14px;
+border:1px solid var(--border);
+border-radius:8px;
+font-size:14px;
+}
+
+.shop-layout{
+display:grid;
+grid-template-columns:220px 1fr;
+gap:30px;
+}
+
+.filter-box{
+background:var(--card);
+border:1px solid var(--border);
+padding:20px;
+border-radius:12px;
+height:fit-content;
+}
+
+.filter-box h3{
+margin-bottom:15px;
+}
+
+.filter-box label{
+font-size:13px;
+color:var(--muted);
+}
+
+.filter-box select{
+width:100%;
+margin:6px 0 10px;
+padding:8px;
+border-radius:6px;
+border:1px solid var(--border);
+}
+
+.clear-filter{
+display:block;
+margin-top:8px;
+font-size:13px;
+color:var(--primary);
+}
+
+.result-text{
+margin-bottom:15px;
+font-size:14px;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+gap:25px;
+}
+
+.card-book{
+background:white;
+border:1px solid var(--border);
+border-radius:12px;
+overflow:hidden;
+transition:0.25s;
+}
+
+.card-book:hover{
+transform:translateY(-6px);
+box-shadow:0 10px 20px rgba(0,0,0,0.08);
+}
+
+.thumb{
+position:relative;
+aspect-ratio:3/4;
+background:#f3f4f6;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:40px;
+}
+
+.thumb img{
+width:100%;
+height:100%;
+object-fit:cover;
+}
+
+.badge{
+position:absolute;
+top:10px;
+right:10px;
+font-size:11px;
+padding:3px 7px;
+border-radius:6px;
+font-weight:600;
+}
+
+.badge.in{
+background:#dcfce7;
+color:#166534;
+}
+
+.badge.low{
+background:#fef3c7;
+color:#92400e;
+}
+
+.badge.out{
+background:#fee2e2;
+color:#991b1b;
+}
+
+.info{
+padding:14px;
+}
+
+.title{
+font-size:14px;
+font-weight:600;
+margin-bottom:4px;
+}
+
+.author{
+font-size:12px;
+color:var(--muted);
+margin-bottom:8px;
+}
+
+.price{
+font-weight:700;
+color:var(--primary);
+margin-bottom:10px;
+}
+
+.empty{
+text-align:center;
+padding:60px;
+color:var(--muted);
+}
+
+.icon{
+font-size:50px;
+margin-bottom:10px;
+}
+
+@media(max-width:900px){
+
+.shop-layout{
+grid-template-columns:1fr;
+}
+
+}
+
+</style>
+
 {% endblock %}

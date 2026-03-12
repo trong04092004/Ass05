@@ -10,10 +10,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: bookstore_admin
-      POSTGRES_PASSWORD: bookstore_pass_2024
+      POSTGRES_PASSWORD: 123456
       POSTGRES_DB: postgres # default db
     ports:
-      - "15432:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
@@ -42,7 +42,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_gateway
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
       # Service URLs (internal Docker network)
       - CUSTOMER_SERVICE_URL=http://customer-service:8000
       - BOOK_SERVICE_URL=http://book-service:8000
@@ -86,7 +86,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_customer
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
       - CART_SERVICE_URL=http://cart-service:8000
     depends_on:
       postgres:
@@ -111,7 +111,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_book
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
     depends_on:
       postgres:
         condition: service_healthy
@@ -135,7 +135,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_cart
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
       - BOOK_SERVICE_URL=http://book-service:8000
     depends_on:
       postgres:
@@ -160,7 +160,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_order
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
       - CART_SERVICE_URL=http://cart-service:8000
       - BOOK_SERVICE_URL=http://book-service:8000
       - PAY_SERVICE_URL=http://pay-service:8000
@@ -190,7 +190,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_payment
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
       # [ASS6] PAYMENT_GATEWAY_URL=https://payment-provider.com/api
     depends_on:
       postgres:
@@ -215,7 +215,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_shipping
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
       # [ASS6] SHIPPING_PROVIDER_URL=https://shipping-provider.com/api
     depends_on:
       postgres:
@@ -240,7 +240,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_rating
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
       - BOOK_SERVICE_URL=http://book-service:8000
     depends_on:
       postgres:
@@ -265,7 +265,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_catalog
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
     depends_on:
       postgres:
         condition: service_healthy
@@ -289,7 +289,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_staff
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
     depends_on:
       postgres:
         condition: service_healthy
@@ -313,7 +313,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=bookstore_micro_manager
       - DB_USER=bookstore_admin
-      - DB_PASSWORD=bookstore_pass_2024
+      - DB_PASSWORD=123456
     depends_on:
       postgres:
         condition: service_healthy
