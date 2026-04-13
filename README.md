@@ -1,5 +1,5 @@
-# 📚 BookStore Microservices — Assignment 5
 
+<<<<<<< HEAD
 Dự án **BookStore Microservices** xây dựng một hệ thống bán sách thương mại điện tử trực tuyến, áp dụng **Kiến trúc Hướng Dịch vụ (Microservices Architecture)**. Hệ thống bao gồm 10 dịch vụ Microservices độc lập và 1 API Gateway (BFF), mỗi dịch vụ được tích hợp Cơ sở dữ liệu riêng, hoạt động song song qua cấu hình Docker Compose.
 
 Tài liệu này cung cấp cái nhìn tổng quan về thiết kế kiến trúc, các mô hình (patterns) đã được triển khai, và cách khởi chạy hệ thống nội hạt (local environment).
@@ -116,3 +116,5 @@ docker exec -it bookstore_book_svc python manage.py backfill_book_images --force
 
 ---
 *(Bản Tóm tắt Tài liệu Dự án hoàn thành trong nửa vòng đời môn học. Mục tiêu Assignment 6 sẽ tập trung nâng cấp cơ chế Asynchronous Event-Driven kết hợp Message Broker và mở rộng Token xác thực).*
+=======
+>>>>>>> 92f0845ee60c7fb3f91a8bea96b466821f40c481
