@@ -93,6 +93,7 @@ SPECTACULAR_SETTINGS = {
     'SWAGGER_UI_SETTINGS': {
         'urls': [
             {'url': '/api/schema/', 'name': 'API Gateway (Routes Server)'},
+            {'url': 'http://localhost:18021/api/schema/', 'name': 'Auth Service'},
             {'url': 'http://localhost:18001/api/schema/', 'name': 'Customer Service'},
             {'url': 'http://localhost:18002/api/schema/', 'name': 'Book Service'},
             {'url': 'http://localhost:18003/api/schema/', 'name': 'Cart Service'},
@@ -102,6 +103,15 @@ SPECTACULAR_SETTINGS = {
             {'url': 'http://localhost:18007/api/schema/', 'name': 'Comment Service'},
             {'url': 'http://localhost:18008/api/schema/', 'name': 'Catalog Service'},
             {'url': 'http://localhost:18010/api/schema/', 'name': 'Manager Service'},
+            {'url': 'http://localhost:18012/api/schema/', 'name': 'Electronics Service'},
+            {'url': 'http://localhost:18013/api/schema/', 'name': 'Fashion Service'},
+            {'url': 'http://localhost:18014/api/schema/', 'name': 'Toy Service'},
+            {'url': 'http://localhost:18015/api/schema/', 'name': 'Grocery Service'},
+            {'url': 'http://localhost:18016/api/schema/', 'name': 'Furniture Service'},
+            {'url': 'http://localhost:18017/api/schema/', 'name': 'Beauty Service'},
+            {'url': 'http://localhost:18018/api/schema/', 'name': 'Sports Service'},
+            {'url': 'http://localhost:18019/api/schema/', 'name': 'Pet Service'},
+            {'url': 'http://localhost:18020/api/schema/', 'name': 'Stationery Service'},
         ],
         'layout': 'StandaloneLayout', # <--- BAT BUOC DE HIEN THI TOPBAR DROPDOWN!
         'deepLinking': True,

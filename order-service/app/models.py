@@ -27,9 +27,13 @@ class Order(models.Model):
 class OrderItem(models.Model):
     """Cac san pham trong 1 don hang."""
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    book_id = models.IntegerField()
+    # Legacy field for old clients and backward compatibility.
+    book_id = models.IntegerField(null=True, blank=True)
+    # Generic product reference.
+    product_service = models.CharField(max_length=40, default='book')
+    product_id = models.IntegerField(null=True, blank=True)
     quantity = models.IntegerField(default=1)
     price = models.DecimalField(max_digits=10, decimal_places=2)  # Gia tai thoi diem dat
 
     def __str__(self):
-        return f"OrderItem order={self.order_id} book={self.book_id} x{self.quantity}"
+        return f"OrderItem order={self.order_id} {self.product_service}:{self.product_id} x{self.quantity}"

@@ -13,4 +13,4 @@ if [ -f seed_data.py ]; then
   python seed_data.py
 fi
 echo "Starting server on 0.0.0.0:8000..."
-exec python manage.py runserver 0.0.0.0:8000
+exec python manage.py runserver 0.0.0.0:8000 --noreload

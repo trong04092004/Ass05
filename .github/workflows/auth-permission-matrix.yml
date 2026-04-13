@@ -1,0 +1,33 @@
+name: Auth Permission Matrix
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  integration-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start services
+        run: docker compose up -d --build
+
+      - name: Run auth and permission matrix
+        run: |
+          chmod +x scripts/ci_auth_matrix.sh
+          scripts/ci_auth_matrix.sh
+
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v

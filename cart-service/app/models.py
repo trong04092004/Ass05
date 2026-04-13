@@ -7,5 +7,9 @@ class Cart(models.Model):
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    book_id = models.IntegerField() # Liên kết gián tiếp sang book-service
+    # Legacy field for book-service compatibility.
+    book_id = models.IntegerField(null=True, blank=True)
+    # Generic product reference across all services.
+    product_service = models.CharField(max_length=40, default='book')
+    product_id = models.IntegerField(null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)

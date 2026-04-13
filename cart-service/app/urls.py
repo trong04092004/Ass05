@@ -9,4 +9,5 @@ router.register(r'cart-items', views.CartItemViewSet, basename='cart-item')
 urlpatterns = [
     path('', include(router.urls)),
     path('carts/<int:customer_id>/clear/', views.clear_cart, name='cart-clear'),
+    path('health/security/', views.security_health, name='security-health'),
 ]

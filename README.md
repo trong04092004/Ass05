@@ -54,7 +54,7 @@ Mọi service bên trong Internal có port là `8000`, tuy nhiên Docker expose 
 | `comment-service` | Đánh giá sao, Bình luận | 18007 | `/api/docs/` |
 | `catalog-service` | Danh mục Category, Thể loại | 18008 | `/api/docs/` |
 | `manager-service` | Promotions (Khuyến mãi), Supply | 18010 | `/api/docs/` |
-| `postgres-db` | RDBMS chung - Shared Container | 15432 | Connection: `localhost:15432` |
+| `postgres-db` | RDBMS chung - Shared Container | 5432 | Connection: `localhost:5432` |
 
 ---
 
@@ -100,6 +100,19 @@ Khi container database bị hỏng hay cần khôi phục về mock data sạch 
 python seed_data.py
 ```
 *(Script có nhiệm vụ xoá sạch Table và Inject lại cấu trúc Category, List Books, cũng như 3 Roles Account tự động qua REST HTTP Call API).*
+
+### 5.4 Bổ sung ảnh bìa sách theo ISBN
+`book-service` hỗ trợ trường `image_url` và đã tích hợp command backfill ảnh bìa qua Open Library theo ISBN.
+
+Chạy lệnh sau để cập nhật ảnh cho toàn bộ sách hiện có:
+```bash
+docker exec -it bookstore_book_svc python manage.py backfill_book_images
+```
+
+Tùy chọn ghi đè ảnh đã có sẵn:
+```bash
+docker exec -it bookstore_book_svc python manage.py backfill_book_images --force
+```
 
 ---
 *(Bản Tóm tắt Tài liệu Dự án hoàn thành trong nửa vòng đời môn học. Mục tiêu Assignment 6 sẽ tập trung nâng cấp cơ chế Asynchronous Event-Driven kết hợp Message Broker và mở rộng Token xác thực).*

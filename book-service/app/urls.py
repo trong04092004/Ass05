@@ -7,4 +7,5 @@ router.register(r'books', views.BookViewSet, basename='book')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('health/security/', views.security_health, name='security-health'),
 ]

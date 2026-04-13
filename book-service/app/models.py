@@ -1,7 +1,9 @@
 from django.db import models
+from django.utils.text import slugify
 
 class Book(models.Model):
     title = models.CharField(max_length=255)
+    sku = models.CharField(max_length=64, unique=True, blank=True, default='')
     slug = models.SlugField(unique=True, null=True, blank=True)
     author = models.CharField(max_length=200)
     publisher = models.CharField(max_length=200, null=True, blank=True)
@@ -19,6 +21,34 @@ class Book(models.Model):
     review_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def name(self):
+        return self.title
+
+    @name.setter
+    def name(self, value):
+        self.title = value
+
+    @property
+    def brand(self):
+        return self.publisher or ''
+
+    @brand.setter
+    def brand(self, value):
+        self.publisher = value
+
+    def save(self, *args, **kwargs):
+        if not self.sku:
+            base = (self.isbn or self.slug or slugify(self.title or '') or 'book')[:64]
+            candidate = base
+            suffix = 1
+            while Book.objects.exclude(pk=self.pk).filter(sku=candidate).exists():
+                trimmed = base[: max(1, 64 - len(str(suffix)) - 1)]
+                candidate = f'{trimmed}-{suffix}'
+                suffix += 1
+            self.sku = candidate
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title

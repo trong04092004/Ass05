@@ -15,12 +15,21 @@ class Promotion(models.Model):
 
 
 class SupplyOrder(models.Model):
-    """Phieu nhap hang cho book-service."""
-    book_id = models.IntegerField()
+    """Phieu nhap hang cho da service san pham."""
+    product_service = models.CharField(max_length=32, default='book')
+    product_id = models.IntegerField(null=True, blank=True)
+    book_id = models.IntegerField(null=True, blank=True)
     quantity = models.IntegerField(default=0)
     supplier = models.CharField(max_length=200, blank=True)
     note = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        if self.product_service == 'book' and self.product_id is None and self.book_id is not None:
+            self.product_id = self.book_id
+        if self.product_service == 'book' and self.book_id is None and self.product_id is not None:
+            self.book_id = self.product_id
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"SupplyOrder book={self.book_id} qty={self.quantity}"
+        return f"SupplyOrder {self.product_service}:{self.product_id} qty={self.quantity}"

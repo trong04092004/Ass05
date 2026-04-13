@@ -56,6 +56,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.AllowAny'],
+    'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework_simplejwt.authentication.JWTStatelessUserAuthentication'],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
@@ -63,4 +64,9 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Payment Service - Thanh toan',
     'DESCRIPTION': 'Quan ly giao dich thanh toan',
     'VERSION': '1.0.0',
+}
+
+SIMPLE_JWT = {
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': os.environ.get('JWT_SECRET_KEY', 'bookstore-shared-jwt-secret-2026'),
 }

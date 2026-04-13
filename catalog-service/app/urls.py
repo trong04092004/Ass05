@@ -7,4 +7,5 @@ router.register(r'categories', views.CategoryViewSet, basename='category')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('health/security/', views.security_health, name='security-health'),
 ]
