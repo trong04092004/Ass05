@@ -41,6 +41,10 @@ urlpatterns = [
     path('api/categories/<int:pk>/', v.api_category_detail, name='api_category_detail'),
     path('api/products/<str:service_key>/', v.api_product_catalog, name='api_product_catalog'),
     path('api/products/<str:service_key>/<int:pk>/', v.api_product_detail, name='api_product_detail'),
+    path('api/ai/events/', v.api_ai_track_event, name='api_ai_track_event'),
+    path('api/ai/recommendations/me/', v.api_ai_recommendations_me, name='api_ai_recommendations_me'),
+    path('api/ai/recommendations/<int:customer_id>/', v.api_ai_recommendations, name='api_ai_recommendations'),
+    path('api/ai/chat/', v.api_ai_chat, name='api_ai_chat'),
 
     # Swagger
     path('api/schema/',  SpectacularAPIView.as_view(),                         name='schema'),

@@ -1,12 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { formatPrice, loadProducts, productFallbackImage, productImageForService, productInlinePlaceholder, services } from '../catalog'
-import type { Product, ServiceConfig } from '../catalog'
-
-type ApiResult = {
-    loading: boolean
-    error: string
-    data: Product[]
-}
+import { Link, useNavigate } from 'react-router-dom'
+import { formatPrice, productFallbackImage, services } from '../catalog'
+import type { ServiceConfig } from '../catalog'
+import { fetchMyRealtimeRecommendations, fetchRealtimeRecommendations, type RecommendationItem } from '../ai'
+import { authHeaders, gatewayBase, getCustomerId } from '../customerSession'
 
 type ArrivalCard = {
     id: string
@@ -14,78 +11,144 @@ type ArrivalCard = {
     name: string
     price: string
     image: string
+    productService?: string
+    productId?: number
     badge?: string
 }
 
-const fallbackArrivals: ArrivalCard[] = [
-    {
-        id: 'axis-01',
-        category: 'ĐỒNG HỒ',
-        name: 'Monolith Axis-01',
-        price: '$1,240',
-        image: productInlinePlaceholder('Monolith Axis-01'),
-        badge: 'NEW',
-    },
-    {
-        id: 'kinetic-strider',
-        category: 'GIÀY DÉP',
-        name: 'Kinetic Strider',
-        price: '$180',
-        image: productInlinePlaceholder('Kinetic Strider'),
-    },
-    {
-        id: 'void-s1',
-        category: 'ÂM THANH',
-        name: 'Void S1 Studio',
-        price: '$450',
-        image: productInlinePlaceholder('Void S1 Studio'),
-    },
-    {
-        id: 'vellum-low-top',
-        category: 'THIẾT YẾU',
-        name: 'Vellum Low-Top',
-        price: '$210',
-        image: productInlinePlaceholder('Vellum Low-Top'),
-    },
-]
+function normalizeServiceKey(serviceKey?: string): string {
+    const normalized = String(serviceKey || 'book').trim().toLowerCase().replace('_', '-')
+    if (!normalized) {
+        return 'book'
+    }
+
+    const aliases: Record<string, string> = {
+        books: 'book',
+        'book-service': 'book',
+        'electronics-service': 'electronics',
+        'fashion-service': 'fashion',
+        'toy-service': 'toy',
+        'toy-service-v2': 'toy',
+        'grocery-service': 'grocery',
+        'furniture-service': 'furniture',
+        'beauty-service': 'beauty',
+        'sports-service': 'sports',
+        'pet-service': 'pet',
+        'stationery-service': 'stationery',
+    }
+
+    if (aliases[normalized]) {
+        return aliases[normalized]
+    }
+
+    return normalized
+}
 
 export function HomePage() {
+    const navigate = useNavigate()
     const [active] = useState<ServiceConfig>(services[0])
-    const [result, setResult] = useState<ApiResult>({ loading: false, error: '', data: [] })
+    const [recommendations, setRecommendations] = useState<RecommendationItem[]>([])
+    const [recsLoading, setRecsLoading] = useState(false)
+    const [actionMessage, setActionMessage] = useState('')
+    const customerId = getCustomerId()
 
     const arrivals = useMemo<ArrivalCard[]>(() => {
-        if (!result.data.length) {
-            return fallbackArrivals
-        }
-        return result.data.slice(0, 4).map((item, index) => ({
-            id: `${active.key}-${item.id}`,
-            category: (item.brand || active.name).toUpperCase(),
+        return recommendations.slice(0, 4).map((item, index) => ({
+            id: `ai-${item.product_service}-${item.product_id}`,
+            category: normalizeServiceKey(item.product_service).toUpperCase(),
             name: item.name,
             price: formatPrice(item.price),
-            image: productImageForService(item, active),
-            badge: index === 0 ? 'NEW' : undefined,
+            image: item.image_url || productFallbackImage(item.name, normalizeServiceKey(item.product_service)),
+            productService: normalizeServiceKey(item.product_service),
+            productId: item.product_id,
+            badge: index === 0 ? 'AI' : undefined,
         }))
-    }, [active.key, active.name, result.data])
+    }, [recommendations])
 
     useEffect(() => {
-        void fetchHomeArrivals(services[0])
-    }, [])
+        let active = true
 
-    const fetchHomeArrivals = async (service: ServiceConfig) => {
-        setResult({ loading: true, error: '', data: [] })
-        try {
-            const data = await loadProducts(service)
-            setResult({ loading: false, error: '', data })
-        } catch (e) {
-            const message = e instanceof Error ? e.message : 'Failed to load data'
-            setResult({ loading: false, error: message, data: [] })
+        if (!customerId) {
+            setRecommendations([])
+            setRecsLoading(false)
+            return () => {
+                active = false
+            }
         }
-    }
+
+        const loadRecs = async () => {
+            setRecsLoading(true)
+            for (let attempt = 0; attempt < 4; attempt += 1) {
+                let rows = await fetchMyRealtimeRecommendations({ limit: 8 })
+                if (rows.length === 0 && customerId) {
+                    rows = await fetchRealtimeRecommendations(customerId, { limit: 8 })
+                }
+                if (!active) {
+                    return
+                }
+                if (rows.length > 0) {
+                    setRecommendations(rows)
+                    setRecsLoading(false)
+                    return
+                }
+                if (attempt < 3) {
+                    await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)))
+                }
+            }
+            if (active) {
+                setRecommendations([])
+                setRecsLoading(false)
+            }
+        }
+
+        void loadRecs()
+
+        return () => {
+            active = false
+        }
+    }, [customerId])
 
     const handleImageError = (name: string) => (event: React.SyntheticEvent<HTMLImageElement>) => {
         const target = event.currentTarget
         target.onerror = null
         target.src = productFallbackImage(name, active.key)
+    }
+
+    const handleAddToCart = async (item: ArrivalCard) => {
+        if (!item.productService || !item.productId) {
+            return
+        }
+
+        if (!customerId) {
+            navigate('/auth/login')
+            return
+        }
+
+        try {
+            const response = await fetch(`${gatewayBase}/api/cart-items/`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: authHeaders(),
+                body: JSON.stringify({
+                    customer_id: customerId,
+                    product_service: item.productService,
+                    product_id: item.productId,
+                    quantity: 1,
+                    ...(item.productService === 'book' ? { book_id: item.productId } : {}),
+                }),
+            })
+
+            if (!response.ok) {
+                const json = (await response.json()) as { error?: string }
+                setActionMessage(json.error || 'Không thể thêm sản phẩm vào giỏ hàng.')
+                return
+            }
+
+            setActionMessage(`Đã thêm "${item.name}" vào giỏ hàng.`)
+            window.setTimeout(() => setActionMessage(''), 2500)
+        } catch {
+            setActionMessage('Không thể kết nối để thêm vào giỏ hàng.')
+        }
     }
 
     return (
@@ -155,30 +218,54 @@ export function HomePage() {
             <section className="section arrivals editorial-arrivals">
                 <div className="section-head arrivals-head">
                     <div>
-                        <span>Mới cập nhật</span>
-                        <h2>Sản phẩm mới về</h2>
+                        <span>Cá nhân hóa bởi AI</span>
+                        <h2>Sản phẩm AI gợi ý cho bạn</h2>
                     </div>
                 </div>
 
-                {result.loading && <p className="state-line">Đang tải sản phẩm từ {active.name}...</p>}
-                {!result.loading && result.error && (
-                    <p className="state-line error">Không thể kết nối tới {active.name}: {result.error}</p>
+                {!customerId && (
+                    <p className="state-line">Đăng nhập để xem danh sách gợi ý AI theo hành vi mua sắm của chính bạn.</p>
                 )}
-                {!result.loading && !result.error && arrivals.length === 0 && (
-                    <p className="state-line">Hiện chưa có sản phẩm nào trong {active.name}.</p>
+                {customerId && recsLoading && recommendations.length === 0 && (
+                    <p className="state-line">AI đang phân tích hành vi mua sắm của bạn để tạo gợi ý...</p>
                 )}
+                {customerId && !recsLoading && recommendations.length === 0 && (
+                    <p className="state-line">AI chưa có đủ dữ liệu hành vi của tài khoản này. Hãy xem chi tiết vài sản phẩm hoặc thêm vào giỏ để tạo gợi ý cá nhân hóa.</p>
+                )}
+                {actionMessage && <p className="state-line">{actionMessage}</p>}
 
                 {arrivals.length > 0 && (
                     <div className="arrivals-grid">
                         {arrivals.map((item) => (
                             <article key={item.id} className="product-card">
                                 <div className="product-media">
-                                    <img src={item.image} alt={item.name} onError={handleImageError(item.name)} />
+                                    {item.productService && item.productId ? (
+                                        <Link className="product-media-link" to={`/product/${item.productService}/${item.productId}`}>
+                                            <img src={item.image} alt={item.name} onError={handleImageError(item.name)} />
+                                        </Link>
+                                    ) : (
+                                        <img src={item.image} alt={item.name} onError={handleImageError(item.name)} />
+                                    )}
                                     {item.badge && <span className="product-badge">{item.badge}</span>}
-                                    <button type="button" className="product-action" aria-label={`Add ${item.name} to cart`}>+</button>
+                                    <button
+                                        type="button"
+                                        className="product-action"
+                                        aria-label={`Add ${item.name} to cart`}
+                                        onClick={() => void handleAddToCart(item)}
+                                    >
+                                        +
+                                    </button>
                                 </div>
                                 <p className="product-brand">{item.category}</p>
-                                <h3>{item.name}</h3>
+                                {item.productService && item.productId ? (
+                                    <h3>
+                                        <Link className="product-title-link" to={`/product/${item.productService}/${item.productId}`}>
+                                            {item.name}
+                                        </Link>
+                                    </h3>
+                                ) : (
+                                    <h3>{item.name}</h3>
+                                )}
                                 <p className="product-price">{item.price}</p>
                             </article>
                         ))}

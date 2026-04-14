@@ -4,6 +4,8 @@ SSR pattern: views render Django templates, goi cac microservices qua HTTP.
 Session luu: customer_id, name, email, role (customer/staff/manager), access_token, refresh_token
 """
 import os
+import re
+import unicodedata
 import requests
 from django.shortcuts import render, redirect
 from django.http import JsonResponse, HttpResponse
@@ -31,6 +33,7 @@ BEAUTY_SERVICE_URL      = os.environ.get('BEAUTY_SERVICE_URL',      'http://loca
 SPORTS_SERVICE_URL      = os.environ.get('SPORTS_SERVICE_URL',      'http://localhost:8018')
 PET_SERVICE_URL         = os.environ.get('PET_SERVICE_URL',         'http://localhost:8019')
 STATIONERY_SERVICE_URL  = os.environ.get('STATIONERY_SERVICE_URL',  'http://localhost:8020')
+AI_SERVICE_URL          = os.environ.get('AI_SERVICE_URL',          'http://localhost:18009')
 
 PRODUCT_SERVICE_URLS = {
     'electronics': ELECTRONICS_SERVICE_URL,
@@ -42,6 +45,44 @@ PRODUCT_SERVICE_URLS = {
     'sports': SPORTS_SERVICE_URL,
     'pet': PET_SERVICE_URL,
     'stationery': STATIONERY_SERVICE_URL,
+}
+
+SERVICE_KEY_ALIASES = {
+    'book': 'book',
+    'books': 'book',
+    'book-service': 'book',
+    'book_service': 'book',
+    'electronics-service': 'electronics',
+    'electronics_service': 'electronics',
+    'fashion-service': 'fashion',
+    'fashion_service': 'fashion',
+    'toy-service': 'toy',
+    'toy_service': 'toy',
+    'toy-service-v2': 'toy',
+    'grocery-service': 'grocery',
+    'grocery_service': 'grocery',
+    'furniture-service': 'furniture',
+    'furniture_service': 'furniture',
+    'beauty-service': 'beauty',
+    'beauty_service': 'beauty',
+    'sports-service': 'sports',
+    'sports_service': 'sports',
+    'pet-service': 'pet',
+    'pet_service': 'pet',
+    'stationery-service': 'stationery',
+    'stationery_service': 'stationery',
+}
+
+CHAT_QUERY_STOPWORDS = {
+    'toi', 'moi', 'ban', 'cho', 'voi', 'va', 'la', 'mot', 'vai', 'nhung', 'cua', 'the', 'nao',
+    'gi', 'duoc', 'can', 'muon', 'goi', 'y', 'san', 'pham', 'tu', 'van', 'mua', 'hang',
+    'vui', 'long', 'giup', 'nhe', 'a', 'o', 'de', 'den', 'trong', 'theo', 've', 'nay', 'lam',
+}
+
+PRODUCT_QUERY_HINT_TERMS = {
+    'san', 'pham', 'sach', 'laptop', 'may', 'tinh', 'dien', 'thoai', 'tablet', 'man', 'hinh',
+    'chuot', 'ban', 'phim', 'tai', 'nghe', 'my', 'pham', 'giay', 'ao', 'quan', 'noi', 'that',
+    'cho', 'meo', 'toy', 'beauty', 'fashion', 'electronics', 'furniture', 'pet', 'sports',
 }
 
 SECURE_COOKIES = os.environ.get('SECURE_COOKIES', 'False') == 'True'
@@ -192,6 +233,414 @@ def _proxy(request, url, allowed_methods=None):
         )
     except requests.exceptions.RequestException as e:
         return JsonResponse({'error': f'Upstream error: {e}'}, status=502)
+
+
+def _safe_track_ai_event(request, payload):
+    try:
+        _request_with_jwt(
+            request,
+            'POST',
+            f"{AI_SERVICE_URL}/api/interaction-events/",
+            json=payload,
+            timeout=3,
+            retry_on_401=False,
+        )
+    except Exception:
+        pass
+
+
+def _normalize_service_key(service_key):
+    normalized = str(service_key or 'book').strip().lower().replace('_', '-')
+    if not normalized:
+        return 'book'
+
+    if normalized in SERVICE_KEY_ALIASES:
+        return SERVICE_KEY_ALIASES[normalized]
+
+    if normalized in PRODUCT_SERVICE_URLS or normalized == 'book':
+        return normalized
+
+    if normalized.endswith('-service-v2'):
+        candidate = normalized[:-11]
+        if candidate in PRODUCT_SERVICE_URLS:
+            return candidate
+
+    if normalized.endswith('-service'):
+        candidate = normalized[:-8]
+        if candidate in PRODUCT_SERVICE_URLS:
+            return candidate
+
+    if normalized.endswith('-v2'):
+        candidate = normalized[:-3]
+        if candidate in PRODUCT_SERVICE_URLS:
+            return candidate
+
+    return normalized
+
+
+def _fold_text(text):
+    raw = str(text or '').lower()
+    folded = ''.join(ch for ch in unicodedata.normalize('NFD', raw) if unicodedata.category(ch) != 'Mn')
+    return folded.replace('đ', 'd').replace('Đ', 'D')
+
+
+def _extract_query_terms(message_text):
+    tokens = re.findall(r"\w+", _fold_text(message_text), flags=re.UNICODE)
+    filtered = [token for token in tokens if len(token) >= 2 and token not in CHAT_QUERY_STOPWORDS]
+    # Keep order while removing duplicates.
+    unique = []
+    for token in filtered:
+        if token not in unique:
+            unique.append(token)
+    return unique[:8]
+
+
+def _infer_service_from_query(message_text, query_terms):
+    text = _fold_text(message_text)
+    terms = set(query_terms or [])
+
+    if {'sach', 'tieu', 'thuyet', 'truyen', 'doc'} & terms or 'book' in terms:
+        return 'book'
+    if {
+        'may', 'tinh', 'laptop', 'tablet', 'chuot', 'ban', 'phim', 'tai', 'nghe', 'man', 'hinh', 'dien', 'thoai'
+    } & terms or 'electronics' in terms:
+        return 'electronics'
+    if {'my', 'pham', 'duong', 'da', 'son', 'serum', 'sua', 'rua', 'mat'} & terms:
+        return 'beauty'
+    if {'thu', 'cung', 'cho', 'meo', 'pet'} & terms:
+        return 'pet'
+    if {'thoi', 'trang', 'ao', 'quan', 'vay', 'giay'} & terms:
+        return 'fashion'
+    if {'noi', 'that', 'ban', 'ghe', 'giuong', 'tu'} & terms:
+        return 'furniture'
+
+    # Phrase-based fallback for popular intents.
+    if 'may tinh' in text:
+        return 'electronics'
+    if 'sach' in text:
+        return 'book'
+    return None
+
+
+def _is_product_query(message_text, query_terms):
+    text = _fold_text(message_text)
+    terms = set(query_terms or [])
+    if _infer_service_from_query(message_text, query_terms):
+        return True
+    if terms & PRODUCT_QUERY_HINT_TERMS:
+        return True
+    return bool(re.search(r"gia|bao\s*nhieu|co\s*hang|mau\s*nao|size|model", text))
+
+
+def _score_detail_relevance(detail, query_terms):
+    if not query_terms:
+        return 0
+    raw = detail.get('raw') or {}
+    haystack = ' '.join(
+        [
+            str(detail.get('name') or ''),
+            str(raw.get('name') or raw.get('title') or ''),
+            str(raw.get('description') or ''),
+            str(raw.get('brand') or raw.get('author') or ''),
+            str(raw.get('category') or ''),
+        ]
+    )
+    text = _fold_text(haystack)
+    return sum(1 for term in query_terms if term in text)
+
+
+def _keyword_search_products(query_terms, request=None, limit=5, min_hits=1):
+    if not query_terms:
+        return []
+
+    scored = []
+
+    books = _get(f"{BOOK_SERVICE_URL}/books/", request=request) or []
+    for row in books:
+        detail = {
+            'id': row.get('id'),
+            'service_key': 'book',
+            'name': row.get('title') or row.get('name') or 'Sản phẩm',
+            'price': row.get('price', 0),
+            'image_url': row.get('image_url', ''),
+            'raw': row,
+        }
+        hits = _score_detail_relevance(detail, query_terms)
+        if hits >= min_hits and detail['id'] is not None:
+            scored.append(
+                {
+                    'product_service': 'book',
+                    'product_id': detail['id'],
+                    'name': detail['name'],
+                    'price': detail['price'],
+                    'image_url': detail['image_url'],
+                    'score': float(hits),
+                    'reason': ['keyword_match'],
+                }
+            )
+
+    for service_key, service_url in PRODUCT_SERVICE_URLS.items():
+        rows = _get(f"{service_url}/products/", request=request) or []
+        for row in rows:
+            detail = {
+                'id': row.get('id'),
+                'service_key': service_key,
+                'name': row.get('name') or row.get('title') or 'Sản phẩm',
+                'price': row.get('price', 0),
+                'image_url': row.get('image_url', ''),
+                'raw': row,
+            }
+            hits = _score_detail_relevance(detail, query_terms)
+            if hits >= min_hits and detail['id'] is not None:
+                scored.append(
+                    {
+                        'product_service': service_key,
+                        'product_id': detail['id'],
+                        'name': detail['name'],
+                        'price': detail['price'],
+                        'image_url': detail['image_url'],
+                        'score': float(hits),
+                        'reason': ['keyword_match'],
+                    }
+                )
+
+    scored.sort(key=lambda item: (float(item.get('score') or 0), str(item.get('name') or '')), reverse=True)
+
+    dedup = []
+    seen = set()
+    for item in scored:
+        key = (item['product_service'], int(item['product_id']))
+        if key in seen:
+            continue
+        seen.add(key)
+        dedup.append(item)
+        if len(dedup) >= limit:
+            break
+    return dedup
+
+
+def _catalog_fallback_products(request=None, limit=5, preferred_service=None):
+    candidates = []
+
+    books = _get(f"{BOOK_SERVICE_URL}/books/", request=request) or []
+    for row in books[:8]:
+        if row.get('id') is None:
+            continue
+        candidates.append(
+            {
+                'product_service': 'book',
+                'product_id': row.get('id'),
+                'name': row.get('title') or row.get('name') or 'Sản phẩm',
+                'price': row.get('price', 0),
+                'image_url': row.get('image_url', ''),
+                'score': 0.1,
+                'reason': ['catalog_fallback'],
+            }
+        )
+
+    for service_key, service_url in PRODUCT_SERVICE_URLS.items():
+        rows = _get(f"{service_url}/products/", request=request) or []
+        for row in rows[:6]:
+            if row.get('id') is None:
+                continue
+            candidates.append(
+                {
+                    'product_service': service_key,
+                    'product_id': row.get('id'),
+                    'name': row.get('name') or row.get('title') or 'Sản phẩm',
+                    'price': row.get('price', 0),
+                    'image_url': row.get('image_url', ''),
+                    'score': 0.1,
+                    'reason': ['catalog_fallback'],
+                }
+            )
+
+    if preferred_service:
+        candidates.sort(
+            key=lambda item: (
+                1 if _normalize_service_key(item.get('product_service')) == preferred_service else 0,
+                str(item.get('name') or ''),
+            ),
+            reverse=True,
+        )
+
+    dedup = []
+    seen = set()
+    for item in candidates:
+        key = (_normalize_service_key(item.get('product_service')), int(item.get('product_id') or 0))
+        if key in seen:
+            continue
+        seen.add(key)
+        dedup.append(item)
+        if len(dedup) >= limit:
+            break
+    return dedup
+
+
+def _detect_chat_intent(message_text):
+    text = _fold_text(message_text)
+    if re.search(r"doi\s*tra|do\s*i\s*tra|hoan\s*tien|bao\s*hanh", text):
+        return 'return_policy'
+    if re.search(r"giao\s*hang|van\s*chuyen|ship", text):
+        return 'shipping_policy'
+    if re.search(r"thanh\s*toan|\bcod\b|chuyen\s*khoan|the\s*(tin\s*dung|ngan\s*hang|quoc\s*te|atm)", text):
+        return 'payment_policy'
+    if re.search(r"goi\s*y|tu\s*van|de\s*xuat|nen\s*mua|qua\s*tang", text):
+        return 'recommendation'
+    return 'general'
+
+
+def _build_concise_answer(
+    intent,
+    has_docs,
+    rec_count,
+    message_text='',
+    is_product_query=False,
+    rec_preview=None,
+):
+    rec_preview = rec_preview or []
+    preview_text = ', '.join(rec_preview[:2])
+
+    if intent == 'return_policy':
+        return (
+            'Mình kiểm tra giúp bạn rồi nhé. Chính sách đổi trả hiện tại là trong 7 ngày kể từ lúc nhận hàng, '
+            'áp dụng khi sản phẩm lỗi hoặc không đúng mô tả, và bạn chỉ cần giữ đủ phụ kiện/hóa đơn để xử lý nhanh hơn.'
+        )
+    if intent == 'shipping_policy':
+        return (
+            'Về giao hàng thì bạn yên tâm nhé: nội thành thường 1-2 ngày, liên tỉnh 3-5 ngày. '
+            'Mỗi đơn đều có mã vận đơn để bạn theo dõi trực tiếp.'
+        )
+    if intent == 'payment_policy':
+        return (
+            'Hiện shop hỗ trợ COD, chuyển khoản ngân hàng và thanh toán thẻ. '
+            'Nếu bạn chọn online thì giao dịch sẽ được xác nhận qua cổng bảo mật.'
+        )
+    if intent == 'recommendation':
+        if rec_count > 0:
+            if preview_text:
+                return (
+                    f'Mình vừa lọc nhanh theo đúng nhu cầu bạn hỏi và thấy khá hợp, nổi bật có {preview_text}. '
+                    'Bạn xem danh sách bên dưới, nếu muốn mình sẽ lọc tiếp theo ngân sách hoặc thương hiệu bạn thích.'
+                )
+            return (
+                'Mình đã lọc các sản phẩm hợp với nhu cầu của bạn rồi nè. '
+                'Bạn xem danh sách bên dưới, nếu cần mình sẽ tinh chỉnh thêm theo ngân sách hoặc mục đích dùng.'
+            )
+        preview = str(message_text or '').strip()
+        if len(preview) > 80:
+            preview = preview[:80].rstrip() + '...'
+        if preview:
+            return (
+                f'Mình chưa thấy mẫu thật sự khớp với "{preview}" ở thời điểm này. '
+                'Bạn thử thêm 1-2 từ khóa cụ thể (ví dụ: laptop gaming, tai nghe chống ồn, bàn phím cơ) để mình lọc chuẩn hơn nhé.'
+            )
+        return 'Mình chưa thấy sản phẩm phù hợp ngay lúc này. Bạn nói rõ hơn về nhu cầu để mình tìm sát hơn nhé.'
+    if is_product_query and rec_count > 0:
+        if preview_text:
+            return (
+                f'Mình đã rà toàn bộ shop theo câu hỏi của bạn và chọn được vài lựa chọn phù hợp, ví dụ {preview_text}. '
+                'Bạn xem danh sách bên dưới, cần thì mình so sánh nhanh ưu/nhược từng mẫu cho bạn.'
+            )
+        return (
+            'Mình đã rà toàn bộ shop và chọn ra các sản phẩm phù hợp theo nhu cầu bạn hỏi. '
+            'Bạn xem danh sách bên dưới, mình có thể lọc sâu thêm theo giá hoặc tính năng.'
+        )
+    if has_docs:
+        return (
+            'Mình vừa tổng hợp nội dung liên quan nhất với câu hỏi của bạn. '
+            'Nếu bạn muốn, mình có thể diễn giải ngắn gọn hơn theo kiểu dễ so sánh để bạn chốt nhanh.'
+        )
+    if rec_count > 0:
+        if preview_text:
+            return (
+                f'Mình đã tìm được vài lựa chọn đáng cân nhắc cho bạn như {preview_text}. '
+                'Bạn xem danh sách bên dưới, mình có thể giúp bạn chọn mẫu đáng tiền nhất.'
+            )
+        return 'Mình đã tìm được vài lựa chọn phù hợp. Bạn xem danh sách bên dưới, cần thì mình lọc tiếp theo tiêu chí bạn muốn.'
+    return (
+        'Mình muốn tư vấn sát nhu cầu của bạn hơn. '
+        'Bạn cho mình thêm ngân sách, mục đích sử dụng hoặc danh mục ưu tiên nhé.'
+    )
+
+
+def _resolve_product_detail(product_service, product_id, request=None):
+    service_key = _normalize_service_key(product_service)
+    if service_key == 'book':
+        data = _get(f"{BOOK_SERVICE_URL}/books/{product_id}/", request=request) or {}
+        if not data or not data.get('id'):
+            return None
+        return {
+            'id': data.get('id', product_id),
+            'service_key': 'book',
+            'name': data.get('title') or data.get('name') or f'Book #{product_id}',
+            'price': data.get('price', 0),
+            'image_url': data.get('image_url', ''),
+            'raw': data,
+        }
+
+    service_url = PRODUCT_SERVICE_URLS.get(service_key)
+    if not service_url:
+        return None
+
+    data = _get(f"{service_url}/products/{product_id}/", request=request) or {}
+    if not data or not data.get('id'):
+        return None
+    return {
+        'id': data.get('id', product_id),
+        'service_key': service_key,
+        'name': data.get('name') or data.get('title') or f'{service_key}-{product_id}',
+        'price': data.get('price', 0),
+        'image_url': data.get('image_url', ''),
+        'raw': data,
+    }
+
+
+def _resolve_product_detail_with_fallback(product_service, product_id, request=None):
+    detail = _resolve_product_detail(product_service, product_id, request=request)
+    if detail:
+        return detail
+
+    service_key = _normalize_service_key(product_service)
+    if service_key == 'book':
+        books = _get(f"{BOOK_SERVICE_URL}/books/", request=request) or []
+        if not books:
+            return None
+        try:
+            idx = abs(int(product_id)) % len(books)
+        except Exception:
+            idx = 0
+        row = books[idx]
+        return {
+            'id': row.get('id'),
+            'service_key': 'book',
+            'name': row.get('title') or row.get('name') or 'Sản phẩm',
+            'price': row.get('price', 0),
+            'image_url': row.get('image_url', ''),
+            'raw': row,
+        }
+
+    service_url = PRODUCT_SERVICE_URLS.get(service_key)
+    if not service_url:
+        return None
+
+    products = _get(f"{service_url}/products/", request=request) or []
+    if not products:
+        return None
+
+    try:
+        idx = abs(int(product_id)) % len(products)
+    except Exception:
+        idx = 0
+    row = products[idx]
+    return {
+        'id': row.get('id'),
+        'service_key': service_key,
+        'name': row.get('name') or row.get('title') or 'Sản phẩm',
+        'price': row.get('price', 0),
+        'image_url': row.get('image_url', ''),
+        'raw': row,
+    }
 
 
 def login_required_view(func):
@@ -896,6 +1345,32 @@ def _clear_auth_cookies(response, request):
         )
 
 
+def _resolve_customer_id(request, payload_customer_id=None):
+    session_cid = request.session.get('customer_id')
+    if session_cid:
+        try:
+            return int(session_cid)
+        except Exception:
+            pass
+
+    cookie_cid = request.COOKIES.get('customer_id')
+    if cookie_cid:
+        try:
+            return int(cookie_cid)
+        except Exception:
+            pass
+
+    if payload_customer_id is not None:
+        try:
+            parsed = int(payload_customer_id)
+            if parsed > 0:
+                return parsed
+        except Exception:
+            pass
+
+    return None
+
+
 def _auth_proxy_with_cookie(request, upstream_url):
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
@@ -922,6 +1397,18 @@ def _auth_proxy_with_cookie(request, upstream_url):
         except ValueError:
             payload = {}
         _set_auth_cookies(downstream, payload, request)
+        _set_auth_session(request, payload)
+
+        # Persist session user info so behavior tracking binds to the logged-in account.
+        resolved_cid = _resolve_customer_id(request, payload.get('customer_id'))
+        if resolved_cid:
+            request.session['customer_id'] = resolved_cid
+        if payload.get('name'):
+            request.session['name'] = payload.get('name')
+        if payload.get('email'):
+            request.session['email'] = payload.get('email')
+        if payload.get('role'):
+            request.session['role'] = payload.get('role')
 
     return downstream
 
@@ -931,7 +1418,20 @@ def api_books(request):
 
 @csrf_exempt
 def api_book_detail(request, pk):
-    return _proxy(request, f"{BOOK_SERVICE_URL}/books/{pk}/", ['GET', 'PUT', 'DELETE'])
+    response = _proxy(request, f"{BOOK_SERVICE_URL}/books/{pk}/", ['GET', 'PUT', 'DELETE'])
+    customer_id = _resolve_customer_id(request)
+    if request.method == 'GET' and customer_id:
+        _safe_track_ai_event(
+            request,
+            {
+                'customer_id': customer_id,
+                'event_type': 'view',
+                'product_service': 'book',
+                'product_id': pk,
+                'metadata': {'source': 'gateway_api_book_detail'},
+            },
+        )
+    return response
 
 @csrf_exempt
 def api_auth_register(request):
@@ -994,15 +1494,100 @@ def api_cart(request, customer_id):
 
 @csrf_exempt
 def api_cart_items(request):
-    return _proxy(request, f"{CART_SERVICE_URL}/cart-items/", ['POST'])
+    response = _proxy(request, f"{CART_SERVICE_URL}/cart-items/", ['POST'])
+    customer_id = _resolve_customer_id(request)
+    if request.method == 'POST' and response.status_code in (200, 201) and customer_id:
+        try:
+            import json
+            body = json.loads(request.body.decode('utf-8') if request.body else '{}')
+            product_service = body.get('product_service') or ('book' if body.get('book_id') else 'book')
+            product_id = body.get('product_id') or body.get('book_id')
+            if product_id:
+                _safe_track_ai_event(
+                    request,
+                    {
+                        'customer_id': customer_id,
+                        'event_type': 'cart',
+                        'product_service': product_service,
+                        'product_id': product_id,
+                        'metadata': {'quantity': body.get('quantity', 1), 'source': 'gateway_api_cart_items'},
+                    },
+                )
+        except Exception:
+            pass
+    return response
 
 @csrf_exempt
 def api_cart_item_detail(request, pk):
-    return _proxy(request, f"{CART_SERVICE_URL}/cart-items/{pk}/", ['PUT', 'PATCH', 'DELETE'])
+    response = _proxy(request, f"{CART_SERVICE_URL}/cart-items/{pk}/", ['PUT', 'PATCH', 'DELETE'])
+    customer_id = _resolve_customer_id(request)
+    if (
+        request.method in ('PUT', 'PATCH')
+        and response.status_code in (200, 201)
+        and customer_id
+    ):
+        try:
+            import json
+
+            payload = json.loads(response.content.decode('utf-8') if response.content else '{}')
+            product_service = _normalize_service_key(payload.get('product_service') or ('book' if payload.get('book_id') else 'book'))
+            product_id = payload.get('product_id') or payload.get('book_id')
+            if product_id:
+                _safe_track_ai_event(
+                    request,
+                    {
+                        'customer_id': customer_id,
+                        'event_type': 'cart',
+                        'product_service': product_service,
+                        'product_id': product_id,
+                        'metadata': {'quantity': payload.get('quantity', 1), 'source': 'gateway_api_cart_item_detail'},
+                    },
+                )
+        except Exception:
+            pass
+    return response
 
 @csrf_exempt
 def api_orders(request):
-    return _proxy(request, f"{ORDER_SERVICE_URL}/orders/", ['GET', 'POST'])
+    response = _proxy(request, f"{ORDER_SERVICE_URL}/orders/", ['GET', 'POST'])
+    customer_id = _resolve_customer_id(request)
+
+    if (
+        request.method == 'POST'
+        and response.status_code in (200, 201)
+        and customer_id
+    ):
+        try:
+            import json
+
+            order_payload = json.loads(response.content.decode('utf-8') if response.content else '{}')
+            order_items = order_payload.get('items') or []
+            if not order_items and order_payload.get('id'):
+                order_detail = _get(f"{ORDER_SERVICE_URL}/orders/{order_payload.get('id')}/", request=request) or {}
+                order_items = order_detail.get('items') or []
+            for item in order_items:
+                product_service = _normalize_service_key(item.get('product_service') or ('book' if item.get('book_id') else 'book'))
+                product_id = item.get('product_id') or item.get('book_id')
+                if not product_id:
+                    continue
+                _safe_track_ai_event(
+                    request,
+                    {
+                        'customer_id': customer_id,
+                        'event_type': 'purchase',
+                        'product_service': product_service,
+                        'product_id': product_id,
+                        'metadata': {
+                            'source': 'gateway_api_orders',
+                            'order_id': order_payload.get('id'),
+                            'quantity': item.get('quantity', 1),
+                        },
+                    },
+                )
+        except Exception:
+            pass
+
+    return response
 
 
 @csrf_exempt
@@ -1049,7 +1634,8 @@ def api_category_detail(request, pk):
 
 @csrf_exempt
 def api_product_catalog(request, service_key):
-    service_url = PRODUCT_SERVICE_URLS.get(service_key)
+    normalized_service = _normalize_service_key(service_key)
+    service_url = PRODUCT_SERVICE_URLS.get(normalized_service)
     if not service_url:
         return JsonResponse({'error': f'Unknown product service: {service_key}'}, status=404)
     return _proxy(request, f"{service_url}/products/", ['GET', 'POST'])
@@ -1057,7 +1643,270 @@ def api_product_catalog(request, service_key):
 
 @csrf_exempt
 def api_product_detail(request, service_key, pk):
-    service_url = PRODUCT_SERVICE_URLS.get(service_key)
+    normalized_service = _normalize_service_key(service_key)
+    service_url = PRODUCT_SERVICE_URLS.get(normalized_service)
     if not service_url:
         return JsonResponse({'error': f'Unknown product service: {service_key}'}, status=404)
-    return _proxy(request, f"{service_url}/products/{pk}/", ['GET', 'PUT', 'PATCH', 'DELETE'])
+    response = _proxy(request, f"{service_url}/products/{pk}/", ['GET', 'PUT', 'PATCH', 'DELETE'])
+    customer_id = _resolve_customer_id(request)
+    if request.method == 'GET' and customer_id:
+        _safe_track_ai_event(
+            request,
+            {
+                'customer_id': customer_id,
+                'event_type': 'view',
+                'product_service': normalized_service,
+                'product_id': pk,
+                'metadata': {'source': 'gateway_api_product_detail'},
+            },
+        )
+    return response
+
+
+@csrf_exempt
+def api_ai_track_event(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        payload = request.body.decode('utf-8') if request.body else '{}'
+        import json
+        data = json.loads(payload)
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
+
+    customer_id = _resolve_customer_id(request, data.get('customer_id'))
+    if not customer_id:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    data['customer_id'] = customer_id
+    data.setdefault('product_service', 'book')
+
+    resp = _request_with_jwt(
+        request,
+        'POST',
+        f"{AI_SERVICE_URL}/api/interaction-events/",
+        json=data,
+        timeout=5,
+    )
+    return HttpResponse(
+        resp.content,
+        status=resp.status_code,
+        content_type=resp.headers.get('Content-Type', 'application/json'),
+    )
+
+
+@csrf_exempt
+def api_ai_recommendations(request, customer_id):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    limit = int(request.GET.get('limit', '8'))
+    exclude_service = request.GET.get('exclude_service', '').lower()
+    exclude_product = request.GET.get('exclude_product_id', '')
+
+    try:
+        rec_resp = _request_with_jwt(
+            request,
+            'POST',
+            f"{AI_SERVICE_URL}/api/ai/recommend/",
+            json={'customer_id': customer_id, 'limit': limit * 2},
+            timeout=5,
+        )
+    except requests.exceptions.RequestException as exc:
+        return JsonResponse({'error': f'AI service unavailable: {exc}'}, status=502)
+    if not rec_resp.ok:
+        return HttpResponse(
+            rec_resp.content,
+            status=rec_resp.status_code,
+            content_type=rec_resp.headers.get('Content-Type', 'application/json'),
+        )
+
+    rows = rec_resp.json().get('results', [])
+    enriched = []
+    for row in rows:
+        service = _normalize_service_key(row.get('product_service') or 'book')
+        pid = row.get('product_id')
+        if pid is None:
+            continue
+        if exclude_product and exclude_service and str(pid) == str(exclude_product) and service == exclude_service:
+            continue
+
+        detail = _resolve_product_detail_with_fallback(service, pid, request=request)
+        if not detail:
+            continue
+
+        enriched.append(
+            {
+                'product_id': detail['id'],
+                'product_service': detail['service_key'],
+                'name': detail['name'],
+                'price': detail['price'],
+                'image_url': detail['image_url'],
+                'score': row.get('score', 0),
+                'reason': row.get('reason', []),
+            }
+        )
+        if len(enriched) >= limit:
+            break
+
+    return JsonResponse({'results': enriched})
+
+
+@csrf_exempt
+def api_ai_recommendations_me(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    customer_id = _resolve_customer_id(request)
+    if not customer_id:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    return api_ai_recommendations(request, int(customer_id))
+
+
+@csrf_exempt
+def api_ai_chat(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    customer_id = request.session.get('customer_id')
+    try:
+        import json
+        data = json.loads(request.body.decode('utf-8') if request.body else '{}')
+    except Exception:
+        return JsonResponse({'error': 'Invalid JSON body'}, status=400)
+
+    if customer_id:
+        data['customer_id'] = customer_id
+
+    message_text = str(data.get('message') or '').strip()
+
+    try:
+        resp = _request_with_jwt(
+            request,
+            'POST',
+            f"{AI_SERVICE_URL}/api/ai/chat/",
+            json=data,
+            timeout=60,
+        )
+    except requests.exceptions.RequestException as exc:
+        return JsonResponse({'error': f'AI service unavailable: {exc}'}, status=502)
+    if not resp.ok:
+        return HttpResponse(
+            resp.content,
+            status=resp.status_code,
+            content_type=resp.headers.get('Content-Type', 'application/json'),
+        )
+
+    try:
+        payload = resp.json()
+    except Exception:
+        return HttpResponse(
+            resp.content,
+            status=resp.status_code,
+            content_type=resp.headers.get('Content-Type', 'application/json'),
+        )
+
+    enriched_recs = []
+    raw_recs = payload.get('personalized_recommendations') or []
+
+    # If AI chat does not return recommendations (e.g., anonymous session),
+    # fetch a fallback recommendation set so chatbot can still suggest products.
+    if not raw_recs:
+        fallback_customer_id = int(customer_id or 1)
+        try:
+            rec_resp = _request_with_jwt(
+                request,
+                'POST',
+                f"{AI_SERVICE_URL}/api/ai/recommend/",
+                json={'customer_id': fallback_customer_id, 'limit': 10},
+                timeout=8,
+            )
+            if rec_resp.ok:
+                raw_recs = rec_resp.json().get('results', [])
+        except requests.exceptions.RequestException:
+            raw_recs = []
+    for row in raw_recs[:8]:
+        service = _normalize_service_key(row.get('product_service') or 'book')
+        pid = row.get('product_id')
+        if pid is None:
+            continue
+
+        detail = _resolve_product_detail(service, pid, request=request)
+        if not detail:
+            continue
+
+        enriched_recs.append(
+            {
+                'product_service': detail['service_key'],
+                'product_id': detail['id'],
+                'name': detail['name'],
+                'price': detail['price'],
+                'image_url': detail['image_url'],
+                'score': row.get('score', 0),
+                'reason': row.get('reason', []),
+            }
+        )
+
+    intent = _detect_chat_intent(message_text)
+    query_terms = _extract_query_terms(message_text)
+    preferred_service = _infer_service_from_query(message_text, query_terms)
+    is_product_query = _is_product_query(message_text, query_terms)
+
+    if enriched_recs and query_terms:
+        def _score(item):
+            name = _fold_text(str(item.get('name') or ''))
+            hits = sum(1 for term in query_terms if term in name)
+            return (hits, float(item.get('score') or 0))
+
+        enriched_recs = sorted(enriched_recs, key=_score, reverse=True)
+
+        if intent == 'recommendation' or is_product_query:
+            min_hits = 1
+            enriched_recs = [
+                item for item in enriched_recs
+                if sum(1 for term in query_terms if term in _fold_text(str(item.get('name') or ''))) >= min_hits
+            ]
+
+        if preferred_service:
+            enriched_recs = sorted(
+                enriched_recs,
+                key=lambda item: (
+                    1 if _normalize_service_key(item.get('product_service')) == preferred_service else 0,
+                    float(item.get('score') or 0),
+                ),
+                reverse=True,
+            )
+
+    if (intent == 'recommendation' or is_product_query) and not enriched_recs:
+        min_hits = 1
+        enriched_recs = _keyword_search_products(query_terms, request=request, limit=8, min_hits=min_hits)
+        if preferred_service:
+            enriched_recs = sorted(
+                enriched_recs,
+                key=lambda item: (
+                    1 if _normalize_service_key(item.get('product_service')) == preferred_service else 0,
+                    float(item.get('score') or 0),
+                ),
+                reverse=True,
+            )
+
+    if (intent == 'recommendation' or is_product_query) and not enriched_recs:
+        enriched_recs = _catalog_fallback_products(request=request, limit=8, preferred_service=preferred_service)
+
+    enriched_recs = enriched_recs[:5]
+    payload['personalized_recommendations'] = enriched_recs
+    rec_preview = [str(item.get('name') or '').strip() for item in enriched_recs if item.get('name')]
+
+    has_rag_context = bool(payload.get('retrieved_documents'))
+    payload['answer'] = _build_concise_answer(
+        intent,
+        has_rag_context,
+        len(enriched_recs),
+        message_text=message_text,
+        is_product_query=is_product_query,
+        rec_preview=rec_preview,
+    )
+
+    return JsonResponse(payload)

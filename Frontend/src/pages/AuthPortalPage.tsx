@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { gatewayBase } from '../customerSession'
 
 type AuthScope = 'customer' | 'admin'
 type AuthMode = 'login' | 'register'
@@ -9,9 +10,6 @@ type AuthPortalPageProps = {
     scope: AuthScope
     mode: AuthMode
 }
-
-const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
-const gatewayBase = `http://${runtimeHost}:18000`
 
 type AuthPayload = {
     customer_id?: number

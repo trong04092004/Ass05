@@ -1,0 +1,14 @@
+Django>=4.2,<5.0
+djangorestframework>=3.14
+psycopg2-binary>=2.9
+django-cors-headers>=4.0
+drf-spectacular>=0.26
+gunicorn>=21.0
+pgvector>=0.2.5
+neo4j>=5.22.0
+numpy>=1.26
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.4.1+cpu
+sentence-transformers>=3.0
+celery>=5.4
+redis>=5.0

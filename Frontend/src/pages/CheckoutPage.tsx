@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { formatPrice } from '../catalog'
+import { formatPrice, productFallbackImage } from '../catalog'
 import { authHeaders, clearCustomerSession, gatewayBase, getCustomerId } from '../customerSession'
+import { fetchRealtimeRecommendations, type RecommendationItem } from '../ai'
 
 type CartItem = {
     id: number
@@ -50,6 +51,7 @@ export function CheckoutPage() {
     const [shippingMethod, setShippingMethod] = useState('standard')
     const [placing, setPlacing] = useState(false)
     const [warning, setWarning] = useState('')
+    const [realtimeRecs, setRealtimeRecs] = useState<RecommendationItem[]>([])
 
     const customerId = getCustomerId()
 
@@ -169,6 +171,9 @@ export function CheckoutPage() {
                 const customerJson = (await customerResp.json()) as { phone?: string }
                 setPhone(customerJson.phone || '')
             }
+
+            const recommendations = await fetchRealtimeRecommendations(cid, { limit: 6 })
+            setRealtimeRecs(recommendations)
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Không tải được dữ liệu thanh toán.'
             setError(message)
@@ -319,7 +324,7 @@ export function CheckoutPage() {
                         {items.map((item) => (
                             <article key={item.id} className="checkout-item-card">
                                 <div className="checkout-item-image">
-                                    {item.imageUrl ? <img src={item.imageUrl} alt={item.title} /> : <div />}
+                                    {item.imageUrl ? <img src={item.imageUrl} alt={item.title} /> : <img src={productFallbackImage(item.title, item.serviceKey)} alt={item.title} />}
                                 </div>
                                 <div>
                                     <h4>{item.title}</h4>
@@ -334,6 +339,26 @@ export function CheckoutPage() {
                             </article>
                         ))}
                     </div>
+
+                    {realtimeRecs.length > 0 && (
+                        <div className="checkout-items">
+                            <h3>Gợi ý realtime cho giỏ hàng</h3>
+                            {realtimeRecs.map((item) => (
+                                <article key={`${item.product_service}-${item.product_id}`} className="checkout-item-card">
+                                    <div className="checkout-item-image">
+                                        {item.image_url ? <img src={item.image_url} alt={item.name} /> : <img src={productFallbackImage(item.name, item.product_service)} alt={item.name} />}
+                                    </div>
+                                    <div>
+                                        <h4>{item.name}</h4>
+                                        <p>{formatPrice(item.price)}</p>
+                                    </div>
+                                    <Link className="catalog-link" to={`/product/${item.product_service}/${item.product_id}`}>
+                                        Xem
+                                    </Link>
+                                </article>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="checkout-methods">
                         <h3>Shipping Method</h3>

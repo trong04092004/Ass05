@@ -1,9 +1,10 @@
 from pathlib import Path
+import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-r8!11%0()vonik35y=)1b^jbiw(y&z6tj*wytf&!6y9n39@^9n'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-dev-key')
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -37,15 +38,25 @@ TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIR
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'bookstore_micro_recommender',
-        'USER': 'root',
-        'PASSWORD': 'rootpassword',
-        'HOST': '127.0.0.1',
-        'PORT': '5433',
+        'NAME': os.getenv('DB_NAME', 'bookstore_micro_recommender'),
+        'USER': os.getenv('DB_USER', 'bookstore_admin'),
+        'PASSWORD': os.getenv('DB_PASSWORD', '123456'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
-# CORS - Cho phép t?t c? origin (bao g?m file://)
+if os.getenv('USE_SQLITE_FOR_TESTS', 'False').lower() == 'true':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'test_db.sqlite3',
+        }
+    }
+    # Avoid PostgreSQL-specific migration operations (e.g., pgvector extension) in local tests.
+    MIGRATION_MODULES = {'app': None}
+
+# CORS - Cho phï¿½p t?t c? origin (bao g?m file://)
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
@@ -54,7 +65,7 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Recommender Service API',
+    'TITLE': 'AI Service API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
@@ -65,4 +76,30 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Celery periodic retraining pipeline
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://redis:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+CELERY_TASK_ALWAYS_EAGER = os.getenv('CELERY_TASK_ALWAYS_EAGER', 'False').lower() == 'true'
+
+try:
+    from celery.schedules import crontab
+
+    CELERY_BEAT_SCHEDULE = {
+        'behavior-retrain-every-30-min': {
+            'task': 'app.tasks.periodic_retrain_behavior_task',
+            'schedule': crontab(minute='*/30'),
+            'args': (['gru4rec', 'transformer', 'gnn'], 1, 2),
+        },
+        'behavior-autoswitch-every-10-min': {
+            'task': 'app.tasks.periodic_auto_switch_task',
+            'schedule': crontab(minute='*/10'),
+        },
+        'rag-reindex-daily': {
+            'task': 'app.tasks.periodic_reindex_rag_task',
+            'schedule': crontab(hour=2, minute=0),
+        },
+    }
+except Exception:
+    CELERY_BEAT_SCHEDULE = {}
 

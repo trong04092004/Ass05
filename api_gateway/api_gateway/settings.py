@@ -102,6 +102,7 @@ SPECTACULAR_SETTINGS = {
             {'url': 'http://localhost:18006/api/schema/', 'name': 'Ship Service'},
             {'url': 'http://localhost:18007/api/schema/', 'name': 'Comment Service'},
             {'url': 'http://localhost:18008/api/schema/', 'name': 'Catalog Service'},
+            {'url': 'http://localhost:18009/api/schema/', 'name': 'AI Service'},
             {'url': 'http://localhost:18010/api/schema/', 'name': 'Manager Service'},
             {'url': 'http://localhost:18012/api/schema/', 'name': 'Electronics Service'},
             {'url': 'http://localhost:18013/api/schema/', 'name': 'Fashion Service'},

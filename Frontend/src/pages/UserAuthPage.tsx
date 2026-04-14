@@ -2,14 +2,11 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { AuthPayload } from '../backofficeAuth'
-import { saveCustomerSession } from '../customerSession'
+import { gatewayBase, saveCustomerSession } from '../customerSession'
 
 type UserAuthPageProps = {
     mode: 'login' | 'register'
 }
-
-const runtimeHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
-const gatewayBase = `http://${runtimeHost}:18000`
 
 export function UserAuthPage({ mode }: UserAuthPageProps) {
     const navigate = useNavigate()

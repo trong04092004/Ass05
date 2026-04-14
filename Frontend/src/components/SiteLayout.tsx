@@ -1,6 +1,7 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { clearBackofficeSession } from '../backofficeAuth'
 import { clearCustomerSession, gatewayBase, getCustomerAccessToken, getCustomerId } from '../customerSession'
+import { ChatbotWidget } from './ChatbotWidget'
 
 export function SiteLayout() {
     const navigate = useNavigate()
@@ -100,6 +101,8 @@ export function SiteLayout() {
                     <p className="copyright">© 2026 Aeon Commerce. Tinh tuyển có chủ đích.</p>
                 </div>
             </footer>
+
+            <ChatbotWidget />
         </div>
     )
 }
