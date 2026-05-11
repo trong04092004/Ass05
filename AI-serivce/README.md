@@ -80,8 +80,8 @@ Mo rong production khuyen nghi
   ingest InteractionEvent qua broker (Kafka/RabbitMQ), xu ly bat dong bo theo stream.
 
 Script sync Neo4j tu InteractionEvent
-- python manage.py sync_neo4j_graph --full-rebuild
-- python manage.py sync_neo4j_graph --customer-id 1001
+- py manage.py sync_neo4j_graph --full-rebuild
+- py manage.py sync_neo4j_graph --customer-id 1001
 
 Lich retrain dinh ky
 - Celery Beat:
@@ -90,7 +90,7 @@ Lich retrain dinh ky
   - reindex RAG luc 02:00 hang ngay
 
 - Cron command (fallback neu khong dung celery):
-  python manage.py retrain_models --models gru4rec transformer gnn --epochs 3
+  py manage.py retrain_models --models gru4rec transformer gnn --epochs 3
 
 Train Deep Learning nhanh
 - POST /api/ai/train-behavior/ {"model_type":"gru4rec","epochs":5}

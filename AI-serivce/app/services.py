@@ -490,6 +490,68 @@ def recommend_products(customer_id, limit=10):
                     merged[key] = row
             results = sorted(merged.values(), key=lambda r: r['score'], reverse=True)[:limit]
 
+    # Optional LLM re-rank (trained from user_data.csv). If model artifacts are missing,
+    # fall back to the existing ranking.
+    try:
+        from .llm_service import suggest_action_score
+    except Exception:
+        suggest_action_score = None
+
+    if suggest_action_score and results:
+        now = timezone.now()
+        last_event = (
+            InteractionEvent.objects.filter(customer_id=customer_id, product_id__isnull=False)
+            .order_by('-occurred_at')
+            .first()
+        )
+
+        base_action = 'view'
+        base_context = 'home_page'
+        if last_event:
+            action_map = {
+                'view': 'view',
+                'click': 'view',
+                'search': 'search_click',
+                'cart': 'add_to_cart',
+                'purchase': 'purchase',
+                'chat': 'share',
+            }
+            context_map = {
+                'view': 'product_detail',
+                'click': 'category_page',
+                'search': 'search_results',
+                'cart': 'cart',
+                'purchase': 'checkout',
+                'chat': 'home_page',
+            }
+            base_action = action_map.get(last_event.event_type, base_action)
+            base_context = context_map.get(last_event.event_type, base_context)
+
+        for row in results:
+            try:
+                llm_score = float(
+                    suggest_action_score(
+                        {
+                            'user_id': customer_id,
+                            'product_id': int(row['product_id']),
+                            'action': base_action,
+                            'context': base_context,
+                            'hour': now.hour,
+                            'day_of_week': now.weekday(),
+                        },
+                        target_action='purchase',
+                    )
+                    or 0.0
+                )
+            except Exception:
+                llm_score = 0.0
+
+            if llm_score > 0:
+                row['score'] = round(float(row.get('score', 0.0)) + (0.2 * llm_score), 4)
+                row['reason'] = sorted(set((row.get('reason') or []) + ['llm_purchase_intent']))[:6]
+
+        results = sorted(results, key=lambda r: r['score'], reverse=True)[:limit]
+
     RecommendationCache.objects.update_or_create(
         customer_id=customer_id,
         defaults={

@@ -93,3 +93,15 @@ class ChatRequestSerializer(serializers.Serializer):
     message = serializers.CharField(max_length=2000)
     top_k = serializers.IntegerField(required=False, default=5, min_value=1, max_value=20)
 
+
+class LLMPredictSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField(min_value=1)
+    product_id = serializers.IntegerField(min_value=1)
+    action = serializers.CharField(required=False, default='view', max_length=50)
+    context = serializers.CharField(required=False, default='home_page', max_length=50)
+    hour = serializers.IntegerField(required=False, default=12, min_value=0, max_value=23)
+    day_of_week = serializers.IntegerField(required=False, default=0, min_value=0, max_value=6)
+
+
+class LLMBatchPredictSerializer(serializers.Serializer):
+    predictions = serializers.ListField(child=LLMPredictSerializer())

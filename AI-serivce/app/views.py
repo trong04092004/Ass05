@@ -19,6 +19,8 @@ from .serializers import (
     RetrainScheduleSerializer,
     RecommendRequestSerializer,
     ChatRequestSerializer,
+    LLMPredictSerializer,
+    LLMBatchPredictSerializer,
 )
 from .services import (
     auto_switch_behavior_model,
@@ -113,6 +115,34 @@ class AIOrchestratorViewSet(viewsets.ViewSet):
             epochs=serializer.validated_data.get('epochs', 3),
         )
         return Response(BehaviorModelSnapshotSerializer(snapshot).data)
+
+    @action(detail=False, methods=['get'], url_path='llm-info')
+    def llm_info(self, request):
+        try:
+            from .llm_service import get_model_info
+        except Exception:
+            return Response({'status': 'unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(get_model_info())
+
+    @action(detail=False, methods=['post'], url_path='llm-predict')
+    def llm_predict(self, request):
+        serializer = LLMPredictSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            from .llm_service import predict_behavior
+        except Exception:
+            return Response({'status': 'unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(predict_behavior(serializer.validated_data))
+
+    @action(detail=False, methods=['post'], url_path='llm-predict-batch')
+    def llm_predict_batch(self, request):
+        serializer = LLMBatchPredictSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            from .llm_service import predict_batch
+        except Exception:
+            return Response({'status': 'unavailable'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response({'results': predict_batch(serializer.validated_data.get('predictions', []))})
 
     @action(detail=False, methods=['post'], url_path='recommend')
     def recommend(self, request):
