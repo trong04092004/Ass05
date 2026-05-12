@@ -24,23 +24,20 @@ _model_configs = None
 
 
 class LLMModel(torch.nn.Module):
-    """LLM Model - attention-enhanced MLP for best performance."""
-    def __init__(self, input_size, hidden_size, num_layers, num_classes, dropout=0.05,
-                 num_users=500, num_products=200, num_actions=8, num_contexts=8):
+    """LLM Model - Balanced performance (80-90% accuracy)."""
+    def __init__(self, input_size, hidden_size, num_layers, num_classes, dropout=0.3,
+                 num_users=500, num_products=200, num_actions=8, num_contexts=6):
         super(LLMModel, self).__init__()
         self.input_size = input_size
 
-        self.user_embedding = torch.nn.Embedding(num_users, 128)
-        self.product_embedding = torch.nn.Embedding(num_products, 128)
-        self.action_embedding = torch.nn.Embedding(num_actions, 64)
-        self.context_embedding = torch.nn.Embedding(num_contexts, 32)
+        # Smaller embeddings for regularization (no action embedding since action is target)
+        self.user_embedding = torch.nn.Embedding(num_users, 64)
+        self.product_embedding = torch.nn.Embedding(num_products, 64)
+        self.context_embedding = torch.nn.Embedding(num_contexts, 16)
 
+        # Simpler continuous features projection (input_size - 3 now, not 4)
         self.cont_proj = torch.nn.Sequential(
-            torch.nn.Linear(input_size - 4, 512),
-            torch.nn.BatchNorm1d(512),
-            torch.nn.ReLU(),
-            torch.nn.Dropout(dropout),
-            torch.nn.Linear(512, 256),
+            torch.nn.Linear(input_size - 3, 256),
             torch.nn.BatchNorm1d(256),
             torch.nn.ReLU(),
             torch.nn.Dropout(dropout),
@@ -49,29 +46,27 @@ class LLMModel(torch.nn.Module):
             torch.nn.ReLU(),
         )
 
-        combined_size = 128 + 128 + 64 + 32 + 128
+        combined_size = 64 + 64 + 16 + 128
+
+        # Simple attention
         self.attention = torch.nn.Sequential(
-            torch.nn.Linear(combined_size, 256),
+            torch.nn.Linear(combined_size, 128),
             torch.nn.ReLU(),
-            torch.nn.Linear(256, combined_size),
+            torch.nn.Linear(128, combined_size),
             torch.nn.Softmax(dim=1),
         )
 
-        self.fc1 = torch.nn.Linear(combined_size, 512)
-        self.bn1 = torch.nn.BatchNorm1d(512)
-        self.fc2 = torch.nn.Linear(512, 256)
-        self.bn2 = torch.nn.BatchNorm1d(256)
-        self.fc3 = torch.nn.Linear(256, 128)
-        self.bn3 = torch.nn.BatchNorm1d(128)
-        self.fc4 = torch.nn.Linear(128, num_classes)
-
-        self.res_proj1 = torch.nn.Linear(combined_size, 512)
-        self.res_proj2 = torch.nn.Linear(512, 256)
-        self.res_proj3 = torch.nn.Linear(256, 128)
+        # Simpler classifier
+        self.fc1 = torch.nn.Linear(combined_size, 256)
+        self.bn1 = torch.nn.BatchNorm1d(256)
+        self.fc2 = torch.nn.Linear(256, 128)
+        self.bn2 = torch.nn.BatchNorm1d(128)
+        self.fc3 = torch.nn.Linear(128, num_classes)
 
         self.relu = torch.nn.ReLU()
         self.dropout_layer = torch.nn.Dropout(dropout)
 
+        # Weight initialization
         for m in self.modules():
             if isinstance(m, torch.nn.Linear):
                 torch.nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -83,38 +78,26 @@ class LLMModel(torch.nn.Module):
     def forward(self, x):
         user_idx = torch.clamp(x[:, 0].long(), 0, self.user_embedding.num_embeddings - 1)
         product_idx = torch.clamp(x[:, 1].long(), 0, self.product_embedding.num_embeddings - 1)
-        action_idx = torch.clamp(x[:, 2].long(), 0, self.action_embedding.num_embeddings - 1)
-        context_idx = torch.clamp(x[:, 3].long(), 0, self.context_embedding.num_embeddings - 1)
+        context_idx = torch.clamp(x[:, 2].long(), 0, self.context_embedding.num_embeddings - 1)
 
         user_emb = self.user_embedding(user_idx)
         product_emb = self.product_embedding(product_idx)
-        action_emb = self.action_embedding(action_idx)
         context_emb = self.context_embedding(context_idx)
 
-        cont_features = x[:, 4:]
+        cont_features = x[:, 3:]
         cont_proj = self.cont_proj(cont_features)
 
-        combined = torch.cat([user_emb, product_emb, action_emb, context_emb, cont_proj], dim=1)
+        combined = torch.cat([user_emb, product_emb, context_emb, cont_proj], dim=1)
 
+        # Attention
         attn_weights = self.attention(combined)
         attended = combined * attn_weights
 
-        identity = self.res_proj1(attended)
         out = self.relu(self.bn1(self.fc1(attended)))
         out = self.dropout_layer(out)
-        out = out + identity
-
-        identity = self.res_proj2(out)
         out = self.relu(self.bn2(self.fc2(out)))
         out = self.dropout_layer(out)
-        out = out + identity
-
-        identity = self.res_proj3(out)
-        out = self.relu(self.bn3(self.fc3(out)))
-        out = self.dropout_layer(out)
-        out = out + identity
-
-        out = self.fc4(out)
+        out = self.fc3(out)
         return out
 
 

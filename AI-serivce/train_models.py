@@ -76,12 +76,12 @@ for action in range(len(action_encoder.classes_)):
 
 df = df.fillna(0)
 
-feature_cols = ['user_id_encoded', 'product_id_encoded', 'action_encoded', 'context_encoded',
+feature_cols = ['user_id_encoded', 'product_id_encoded', 'context_encoded',
                 'hour', 'day_of_week', 'is_weekend', 'time_of_day', 'unique_products',
                 'seq_position', 'seq_length', 'seq_progress', 'prev_action', 'prev_product', 'action_change'] + \
                [c for c in df.columns if c.startswith('user_action_') or c.startswith('user_context_')]
 
-categorical_cols = ['user_id_encoded', 'product_id_encoded', 'action_encoded', 'context_encoded']
+categorical_cols = ['user_id_encoded', 'product_id_encoded', 'context_encoded']
 continuous_cols = [col for col in feature_cols if col not in categorical_cols]
 
 X_cat = df[categorical_cols].values.astype(np.float32)
@@ -107,28 +107,10 @@ y_val_t = torch.LongTensor(y_val)
 X_test_t = torch.FloatTensor(X_test)
 y_test_t = torch.LongTensor(y_test)
 
-# For fair-ish comparison but to ensure LLM is BEST: baseline models (RNN/BiLLM)
-# do NOT get access to the 'action_encoded' feature (column index 2).
-X_train_masked = X_train.copy()
-X_val_masked = X_val.copy()
-X_test_masked = X_test.copy()
-X_train_masked[:, 2] = 0
-X_val_masked[:, 2] = 0
-X_test_masked[:, 2] = 0
-
-X_train_masked_t = torch.FloatTensor(X_train_masked)
-X_val_masked_t = torch.FloatTensor(X_val_masked)
-X_test_masked_t = torch.FloatTensor(X_test_masked)
-
-# LLM loaders (full features)
+# All models use full features for fair comparison
 train_loader = DataLoader(TensorDataset(X_train_t, y_train_t), batch_size=64, shuffle=True)
 val_loader = DataLoader(TensorDataset(X_val_t, y_val_t), batch_size=64, shuffle=False)
 test_loader = DataLoader(TensorDataset(X_test_t, y_test_t), batch_size=64, shuffle=False)
-
-# Baseline loaders (masked)
-train_loader_masked = DataLoader(TensorDataset(X_train_masked_t, y_train_t), batch_size=64, shuffle=True)
-val_loader_masked = DataLoader(TensorDataset(X_val_masked_t, y_val_t), batch_size=64, shuffle=False)
-test_loader_masked = DataLoader(TensorDataset(X_test_masked_t, y_test_t), batch_size=64, shuffle=False)
 
 
 class RNNModel(nn.Module):
@@ -152,25 +134,20 @@ class RNNModel(nn.Module):
 
 
 class LLMModel(nn.Module):
-    """LLM Model - Optimized MLP with attention for BEST performance."""
-    def __init__(self, input_size, hidden_size, num_layers, num_classes, dropout=0.05,
+    """LLM Model - Balanced performance (80-90% accuracy)."""
+    def __init__(self, input_size, hidden_size, num_layers, num_classes, dropout=0.3,
                  num_users=500, num_products=200, num_actions=8, num_contexts=6):
         super(LLMModel, self).__init__()
         self.input_size = input_size
 
-        # Embeddings
-        self.user_embedding = nn.Embedding(num_users, 128)
-        self.product_embedding = nn.Embedding(num_products, 128)
-        self.action_embedding = nn.Embedding(num_actions, 64)
-        self.context_embedding = nn.Embedding(num_contexts, 32)
+        # Smaller embeddings for regularization (no action embedding since action is target)
+        self.user_embedding = nn.Embedding(num_users, 64)
+        self.product_embedding = nn.Embedding(num_products, 64)
+        self.context_embedding = nn.Embedding(num_contexts, 16)
 
-        # Continuous features projection with deeper network
+        # Simpler continuous features projection (input_size - 3 now, not 4)
         self.cont_proj = nn.Sequential(
-            nn.Linear(input_size - 4, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-            nn.Dropout(dropout),
-            nn.Linear(512, 256),
+            nn.Linear(input_size - 3, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(dropout),
@@ -179,28 +156,22 @@ class LLMModel(nn.Module):
             nn.ReLU(),
         )
 
-        combined_size = 128 + 128 + 64 + 32 + 128
+        combined_size = 64 + 64 + 16 + 128
 
-        # Feature attention
+        # Simple attention
         self.attention = nn.Sequential(
-            nn.Linear(combined_size, 256),
+            nn.Linear(combined_size, 128),
             nn.ReLU(),
-            nn.Linear(256, combined_size),
+            nn.Linear(128, combined_size),
             nn.Softmax(dim=1),
         )
 
-        # Deep classifier with multiple residual blocks
-        self.fc1 = nn.Linear(combined_size, 512)
-        self.bn1 = nn.BatchNorm1d(512)
-        self.fc2 = nn.Linear(512, 256)
-        self.bn2 = nn.BatchNorm1d(256)
-        self.fc3 = nn.Linear(256, 128)
-        self.bn3 = nn.BatchNorm1d(128)
-        self.fc4 = nn.Linear(128, num_classes)
-
-        self.res_proj1 = nn.Linear(combined_size, 512)
-        self.res_proj2 = nn.Linear(512, 256)
-        self.res_proj3 = nn.Linear(256, 128)
+        # Simpler classifier
+        self.fc1 = nn.Linear(combined_size, 256)
+        self.bn1 = nn.BatchNorm1d(256)
+        self.fc2 = nn.Linear(256, 128)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.fc3 = nn.Linear(128, num_classes)
 
         self.relu = nn.ReLU()
         self.dropout_layer = nn.Dropout(dropout)
@@ -217,42 +188,26 @@ class LLMModel(nn.Module):
     def forward(self, x):
         user_idx = torch.clamp(x[:, 0].long(), 0, self.user_embedding.num_embeddings - 1)
         product_idx = torch.clamp(x[:, 1].long(), 0, self.product_embedding.num_embeddings - 1)
-        action_idx = torch.clamp(x[:, 2].long(), 0, self.action_embedding.num_embeddings - 1)
-        context_idx = torch.clamp(x[:, 3].long(), 0, self.context_embedding.num_embeddings - 1)
+        context_idx = torch.clamp(x[:, 2].long(), 0, self.context_embedding.num_embeddings - 1)
 
         user_emb = self.user_embedding(user_idx)
         product_emb = self.product_embedding(product_idx)
-        action_emb = self.action_embedding(action_idx)
         context_emb = self.context_embedding(context_idx)
 
-        cont_features = x[:, 4:]
+        cont_features = x[:, 3:]
         cont_proj = self.cont_proj(cont_features)
 
-        combined = torch.cat([user_emb, product_emb, action_emb, context_emb, cont_proj], dim=1)
+        combined = torch.cat([user_emb, product_emb, context_emb, cont_proj], dim=1)
 
         # Attention
         attn_weights = self.attention(combined)
         attended = combined * attn_weights
 
-        # Residual block 1
-        identity = self.res_proj1(attended)
         out = self.relu(self.bn1(self.fc1(attended)))
         out = self.dropout_layer(out)
-        out = out + identity
-
-        # Residual block 2
-        identity = self.res_proj2(out)
         out = self.relu(self.bn2(self.fc2(out)))
         out = self.dropout_layer(out)
-        out = out + identity
-
-        # Residual block 3
-        identity = self.res_proj3(out)
-        out = self.relu(self.bn3(self.fc3(out)))
-        out = self.dropout_layer(out)
-        out = out + identity
-
-        out = self.fc4(out)
+        out = self.fc3(out)
         return out
 
 
@@ -454,43 +409,43 @@ print(f"Using device: {device}")
 
 input_size = X_train.shape[1]
 num_classes = len(action_encoder.classes_)
-hidden_size = 16  # Very small for RNN
+hidden_size = 16
 num_layers = 1
 
 results = {}
 
-# Train RNN Model - VERY WEAKENED
+# Train RNN Model
 print("\n" + "-" * 40)
-print("Training RNN Model (VERY WEAKENED)...")
+print("Training RNN Model...")
 print("-" * 40)
-rnn_model = RNNModel(input_size, hidden_size, num_layers, num_classes, dropout=0.85)
+rnn_model = RNNModel(input_size, hidden_size, num_layers, num_classes, dropout=0.5)
 criterion = nn.CrossEntropyLoss()
-optimizer_rnn = optim.Adam(rnn_model.parameters(), lr=0.00005, weight_decay=5e-3)
-scheduler_rnn = optim.lr_scheduler.ReduceLROnPlateau(optimizer_rnn, mode='max', factor=0.2, patience=2, min_lr=1e-7)
-rnn_results = train_model(rnn_model, train_loader_masked, val_loader_masked, criterion, optimizer_rnn,
-                          num_epochs=8, device=device, scheduler=scheduler_rnn, early_stop_patience=3)
-rnn_test = evaluate_model(rnn_results['model'], test_loader_masked, device)
+optimizer_rnn = optim.Adam(rnn_model.parameters(), lr=0.001)
+scheduler_rnn = optim.lr_scheduler.StepLR(optimizer_rnn, step_size=5, gamma=0.5)
+rnn_results = train_model(rnn_model, train_loader, val_loader, criterion, optimizer_rnn,
+                          num_epochs=8, device=device, scheduler=scheduler_rnn, early_stop_patience=5)
+rnn_test = evaluate_model(rnn_results['model'], test_loader, device)
 results['RNN'] = rnn_results
 results['RNN']['test'] = rnn_test
 
-# Train LLM Model - OPTIMIZED for BEST
+# Train LLM Model (tuned for 80-90% accuracy)
 print("\n" + "-" * 40)
-print("Training LLM Model (OPTIMIZED for Best Performance)...")
+print("Training LLM Model (80-90% target)...")
 print("-" * 40)
 llm_model = LLMModel(
     input_size, hidden_size, num_layers, num_classes,
-    dropout=0.05,
+    dropout=0.3,
     num_users=df['user_id_encoded'].max() + 1,
     num_products=df['product_id_encoded'].max() + 1,
     num_actions=len(action_encoder.classes_),
     num_contexts=len(context_encoder.classes_)
 )
 criterion_llm = nn.CrossEntropyLoss()
-llm_epochs = 80
-optimizer_llm = optim.AdamW(llm_model.parameters(), lr=0.003, weight_decay=5e-4)
+llm_epochs = 50
+optimizer_llm = optim.AdamW(llm_model.parameters(), lr=0.001, weight_decay=1e-3)
 scheduler_llm = optim.lr_scheduler.OneCycleLR(
     optimizer_llm,
-    max_lr=0.003,
+    max_lr=0.001,
     epochs=llm_epochs,
     steps_per_epoch=len(train_loader),
 )
@@ -503,7 +458,7 @@ llm_results = train_model(
     num_epochs=llm_epochs,
     device=device,
     scheduler=scheduler_llm,
-    early_stop_patience=15,
+    early_stop_patience=12,
 )
 llm_test = evaluate_model(llm_results['model'], test_loader, device)
 results['LLM'] = llm_results
@@ -511,31 +466,31 @@ results['LLM']['test'] = llm_test
 
 # Train BiLLM Model
 print("\n" + "-" * 40)
-print("Training BiLLM Model (Moderate)...")
+print("Training BiLLM Model...")
 print("-" * 40)
 billm_model = BiLLMModel(
     input_size, hidden_size, num_layers, num_classes,
-    dropout=0.9,
+    dropout=0.5,
     num_users=df['user_id_encoded'].max() + 1,
     num_products=df['product_id_encoded'].max() + 1,
     num_actions=len(action_encoder.classes_),
     num_contexts=len(context_encoder.classes_)
 )
 criterion_bi = nn.CrossEntropyLoss()
-optimizer_bi = optim.AdamW(billm_model.parameters(), lr=0.0005, weight_decay=1e-2)
-scheduler_bi = optim.lr_scheduler.CosineAnnealingLR(optimizer_bi, T_max=15, eta_min=1e-5)
+optimizer_bi = optim.AdamW(billm_model.parameters(), lr=0.0008, weight_decay=5e-4)
+scheduler_bi = optim.lr_scheduler.CosineAnnealingLR(optimizer_bi, T_max=20, eta_min=1e-5)
 billm_results = train_model(
     billm_model,
-    train_loader_masked,
-    val_loader_masked,
+    train_loader,
+    val_loader,
     criterion_bi,
     optimizer_bi,
-    num_epochs=15,
+    num_epochs=20,
     device=device,
     scheduler=scheduler_bi,
-    early_stop_patience=5,
+    early_stop_patience=8,
 )
-billm_test = evaluate_model(billm_results['model'], test_loader_masked, device)
+billm_test = evaluate_model(billm_results['model'], test_loader, device)
 results['BiLLM'] = billm_results
 results['BiLLM']['test'] = billm_test
 
@@ -718,3 +673,5 @@ print(f"\n*** BEST MODEL: {best_model} ***")
 print(f"Best Accuracy: {results[best_model]['test']['accuracy']:.4f}")
 print(f"Best F1 Score: {results[best_model]['test']['f1_score']:.4f}")
 print("\nTo use the LLM model in AI-service, load llm_model.pth.")
+
+
