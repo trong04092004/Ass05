@@ -1,75 +1,21 @@
 @echo off
-REM ============================================================
-REM BookStore Microservices - Start All Services (Local Dev)
-REM Ports: Gateway:8000, Customer:8003, Book:8001, Cart:8002
-REM         Order:8004, Pay:8005, Ship:8006, Comment:8007
-REM         Catalog:8008, Staff:8009, Manager:8010
-REM
-REM Truoc khi chay: bat Docker PostreSQL (port 5433)
-REM   docker-compose up postgres -d
-REM ============================================================
-
+setlocal
 set ROOT=%~dp0
 if "%ROOT:~-1%"=="\" set ROOT=%ROOT:~0,-1%
-set PYTHON=%ROOT%\book-service\venv\Scripts\python.exe
-set DB_HOST=localhost
-set DB_PORT=5433
-set DB_USER=root
-set DB_PASSWORD=rootpassword
+cd /d %ROOT%
 
-echo Starting BookStore Microservices...
-
-start "customer-service :8003" cmd /k "cd /d %ROOT%\customer-service && set DB_NAME=bookstore_micro_customer && set DB_HOST=%DB_HOST% && set DB_PORT=%DB_PORT% && set DB_USER=%DB_USER% && set DB_PASSWORD=%DB_PASSWORD% && %PYTHON% manage.py runserver 8003"
-
-start "book-service :8001" cmd /k "cd /d %ROOT%\book-service && set DB_NAME=bookstore_micro_book && %PYTHON% manage.py runserver 8001"
-
-start "cart-service :8002" cmd /k "cd /d %ROOT%\cart-service && set DB_NAME=bookstore_micro_cart && set BOOK_SERVICE_URL=http://localhost:8001 && %PYTHON% manage.py runserver 8002"
-
-start "order-service :8004" cmd /k "cd /d %ROOT%\order-service && set DB_NAME=bookstore_micro_order && set CART_SERVICE_URL=http://localhost:8002 && set BOOK_SERVICE_URL=http://localhost:8001 && set PAY_SERVICE_URL=http://localhost:8005 && set SHIP_SERVICE_URL=http://localhost:8006 && %PYTHON% manage.py runserver 8004"
-
-start "pay-service :8005" cmd /k "cd /d %ROOT%\pay-service && set DB_NAME=bookstore_micro_payment && %PYTHON% manage.py runserver 8005"
-
-start "ship-service :8006" cmd /k "cd /d %ROOT%\ship-service && set DB_NAME=bookstore_micro_shipping && %PYTHON% manage.py runserver 8006"
-
-start "comment-service :8007" cmd /k "cd /d %ROOT%\comment-service && set DB_NAME=bookstore_micro_rating && %PYTHON% manage.py runserver 8007"
-
-start "auth-service :8021" cmd /k "cd /d %ROOT%\auth-service && set DB_NAME=bookstore_micro_customer && set CART_SERVICE_URL=http://localhost:8002 && %PYTHON% manage.py runserver 8021"
-
-start "catalog-service :8008" cmd /k "cd /d %ROOT%\catalog-service && set DB_NAME=bookstore_micro_catalog && %PYTHON% manage.py runserver 8008"
-
-start "staff-service :8009" cmd /k "cd /d %ROOT%\staff-service && set DB_NAME=bookstore_micro_staff && %PYTHON% manage.py runserver 8009"
-
-start "manager-service :8010" cmd /k "cd /d %ROOT%\manager-service && set DB_NAME=bookstore_micro_manager && %PYTHON% manage.py runserver 8010"
-
-start "electronics-service :8012" cmd /k "cd /d %ROOT%\electronics-service && set DB_NAME=bookstore_micro_electronics && %PYTHON% manage.py runserver 8012"
-
-start "fashion-service :8013" cmd /k "cd /d %ROOT%\fashion-service && set DB_NAME=bookstore_micro_fashion && %PYTHON% manage.py runserver 8013"
-
-start "toy-service :8014" cmd /k "cd /d %ROOT%\toy-service && set DB_NAME=bookstore_micro_toy && %PYTHON% manage.py runserver 8014"
-
-start "grocery-service :8015" cmd /k "cd /d %ROOT%\grocery-service && set DB_NAME=bookstore_micro_grocery && %PYTHON% manage.py runserver 8015"
-
-start "furniture-service :8016" cmd /k "cd /d %ROOT%\furniture-service && set DB_NAME=bookstore_micro_furniture && %PYTHON% manage.py runserver 8016"
-
-start "beauty-service :8017" cmd /k "cd /d %ROOT%\beauty-service && set DB_NAME=bookstore_micro_beauty && %PYTHON% manage.py runserver 8017"
-
-start "sports-service :8018" cmd /k "cd /d %ROOT%\sports-service && set DB_NAME=bookstore_micro_sports && %PYTHON% manage.py runserver 8018"
-
-start "pet-service :8019" cmd /k "cd /d %ROOT%\pet-service && set DB_NAME=bookstore_micro_pet && %PYTHON% manage.py runserver 8019"
-
-start "stationery-service :8020" cmd /k "cd /d %ROOT%\stationery-service && set DB_NAME=bookstore_micro_stationery && %PYTHON% manage.py runserver 8020"
-
-echo Waiting 5s for services to start...
-timeout /t 5 /nobreak > NUL
-
-start "API Gateway :8000" cmd /k "cd /d %ROOT%\api_gateway && set DB_NAME=bookstore_micro_gateway && set DB_HOST=%DB_HOST% && set DB_PORT=%DB_PORT% && set DB_USER=%DB_USER% && set DB_PASSWORD=%DB_PASSWORD% && set AUTH_SERVICE_URL=http://localhost:8021 && set CUSTOMER_SERVICE_URL=http://localhost:8003 && set BOOK_SERVICE_URL=http://localhost:8001 && set CART_SERVICE_URL=http://localhost:8002 && set ORDER_SERVICE_URL=http://localhost:8004 && set PAY_SERVICE_URL=http://localhost:8005 && set SHIP_SERVICE_URL=http://localhost:8006 && set COMMENT_SERVICE_URL=http://localhost:8007 && set CATALOG_SERVICE_URL=http://localhost:8008 && set STAFF_SERVICE_URL=http://localhost:8009 && set MANAGER_SERVICE_URL=http://localhost:8010 && set ELECTRONICS_SERVICE_URL=http://localhost:8012 && set FASHION_SERVICE_URL=http://localhost:8013 && set TOY_SERVICE_URL=http://localhost:8014 && set GROCERY_SERVICE_URL=http://localhost:8015 && set FURNITURE_SERVICE_URL=http://localhost:8016 && set BEAUTY_SERVICE_URL=http://localhost:8017 && set SPORTS_SERVICE_URL=http://localhost:8018 && set PET_SERVICE_URL=http://localhost:8019 && set STATIONERY_SERVICE_URL=http://localhost:8020 && %PYTHON% manage.py runserver 8000"
+echo Starting Docker stack...
+docker compose up -d --build
+if errorlevel 1 (
+  echo Failed to start Docker stack.
+  exit /b 1
+)
 
 echo.
-echo ============================================================
-echo  BookStore is starting up!
-echo  Truy cap: http://localhost:8000
-echo  Manager:  manager@bookstore.com / manager123
-echo  Staff:    staff@bookstore.com / staff123
-echo  Customer: customer1@example.com / cust123
-echo  Frontend React: http://localhost:5173  (run: cd Frontend ^&^& npm run dev)
-echo ============================================================
+echo Services:
+echo   API Gateway : http://localhost:18000
+echo   AI Service  : http://localhost:18009
+echo   Frontend    : http://localhost:15173
+echo   PostgreSQL  : localhost:5432
+echo   Neo4j       : http://localhost:7474
+endlocal

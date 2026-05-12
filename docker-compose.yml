@@ -16,7 +16,7 @@ services:
     networks:
       - bookstore-network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U bookstore_admin -d postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U bookstore_admin -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -24,10 +24,9 @@ services:
   neo4j:
     image: neo4j:5.23-community
     restart: unless-stopped
-    hostname: neo4j
     environment:
-      - NEO4J_AUTH=neo4j/neo4jpassword
-      - NEO4J_server_default__advertised__address=neo4j
+      NEO4J_AUTH: neo4j/neo4jpassword
+      NEO4J_server_default__advertised__address: neo4j
     ports:
       - "7474:7474"
       - "7687:7687"
@@ -36,117 +35,41 @@ services:
     networks:
       - bookstore-network
     healthcheck:
-      test: [ "CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u neo4j -p neo4jpassword 'RETURN 1;' || exit 1" ]
+      test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u neo4j -p neo4jpassword 'RETURN 1;' || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 10
-  api-gateway:
-    build: ./api_gateway
+
+  redis:
+    image: redis:7-alpine
     restart: unless-stopped
-    ports:
-      - "18000:8000"
-    environment:
-      - SECRET_KEY=bookstore-gateway-secret-key-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_gateway
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      # Service URLs (internal Docker network)
-      - CUSTOMER_SERVICE_URL=http://customer-service:8000
-      - BOOK_SERVICE_URL=http://book-service:8000
-      - CART_SERVICE_URL=http://cart-service:8000
-      - ORDER_SERVICE_URL=http://order-service:8000
-      - PAY_SERVICE_URL=http://pay-service:8000
-      - SHIP_SERVICE_URL=http://ship-service:8000
-      - COMMENT_SERVICE_URL=http://comment-service:8000
-      - CATALOG_SERVICE_URL=http://catalog-service:8000
-      - STAFF_SERVICE_URL=http://staff-service:8000
-      - MANAGER_SERVICE_URL=http://manager-service:8000
-      - ELECTRONICS_SERVICE_URL=http://electronics-service:8000
-      - FASHION_SERVICE_URL=http://fashion-service:8000
-      - TOY_SERVICE_URL=http://toy-service-v2:8000
-      - GROCERY_SERVICE_URL=http://grocery-service:8000
-      - FURNITURE_SERVICE_URL=http://furniture-service:8000
-      - BEAUTY_SERVICE_URL=http://beauty-service:8000
-      - SPORTS_SERVICE_URL=http://sports-service:8000
-      - PET_SERVICE_URL=http://pet-service:8000
-      - STATIONERY_SERVICE_URL=http://stationery-service:8000
-      - AI_SERVICE_URL=http://ai-service:8000
-      - FRONTEND_URL=http://localhost:15173
-      - AUTH_SERVICE_URL=http://auth-service:8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      customer-service:
-        condition: service_started
-      auth-service:
-        condition: service_started
-      book-service:
-        condition: service_started
-      cart-service:
-        condition: service_started
-      order-service:
-        condition: service_started
-      pay-service:
-        condition: service_started
-      ship-service:
-        condition: service_started
-      comment-service:
-        condition: service_started
-      catalog-service:
-        condition: service_started
-      staff-service:
-        condition: service_started
-      manager-service:
-        condition: service_started
-      electronics-service:
-        condition: service_started
-      fashion-service:
-        condition: service_started
-      toy-service-v2:
-        condition: service_started
-      grocery-service:
-        condition: service_started
-      furniture-service:
-        condition: service_started
-      beauty-service:
-        condition: service_started
-      sports-service:
-        condition: service_started
-      pet-service:
-        condition: service_started
-      stationery-service:
-        condition: service_started
-      ai-service:
-        condition: service_started
     networks:
       - bookstore-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
-  # ============================================================
-  # AI Service (Knowledge Graph + Behavior Model + RAG Chat)
-  # Port: 18009 | DB: bookstore_micro_recommender
-  # ============================================================
   ai-service:
     build: ./AI-serivce
     restart: unless-stopped
     ports:
       - "18009:8000"
     environment:
-      - SECRET_KEY=bookstore-ai-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_recommender
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - GRAPH_BACKEND=neo4j
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=neo4jpassword
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      SECRET_KEY: bookstore-ai-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_recommender
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+      GRAPH_BACKEND: neo4j
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: neo4jpassword
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,37 +79,31 @@ services:
         condition: service_healthy
     networks:
       - bookstore-network
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    networks:
-      - bookstore-network
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=3)\""]
+      interval: 20s
       timeout: 5s
-      retries: 10
+      retries: 6
 
   ai-worker:
     build: ./AI-serivce
     restart: unless-stopped
     command: celery -A recommender_service worker -l info
     environment:
-      - SECRET_KEY=bookstore-ai-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_recommender
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - GRAPH_BACKEND=neo4j
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=neo4jpassword
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - RUN_MIGRATIONS=false
+      SECRET_KEY: bookstore-ai-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_recommender
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+      GRAPH_BACKEND: neo4j
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: neo4jpassword
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      RUN_MIGRATIONS: "false"
     depends_on:
       postgres:
         condition: service_healthy
@@ -202,20 +119,20 @@ services:
     restart: unless-stopped
     command: celery -A recommender_service beat -l info
     environment:
-      - SECRET_KEY=bookstore-ai-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_recommender
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - GRAPH_BACKEND=neo4j
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=neo4jpassword
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - RUN_MIGRATIONS=false
+      SECRET_KEY: bookstore-ai-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_recommender
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+      GRAPH_BACKEND: neo4j
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: neo4jpassword
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      RUN_MIGRATIONS: "false"
     depends_on:
       postgres:
         condition: service_healthy
@@ -226,6 +143,212 @@ services:
     networks:
       - bookstore-network
 
+  cart-service:
+    build: ./cart-service
+    restart: unless-stopped
+    ports:
+      - "18003:8000"
+    environment:
+      SECRET_KEY: bookstore-cart-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_cart
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+      BOOK_SERVICE_URL: http://product-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/security/', timeout=3)\""]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+
+  pay-service:
+    build: ./pay-service
+    restart: unless-stopped
+    ports:
+      - "18005:8000"
+    environment:
+      SECRET_KEY: bookstore-pay-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_payment
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/security/', timeout=3)\""]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+
+  ship-service:
+    build: ./ship-service
+    restart: unless-stopped
+    ports:
+      - "18006:8000"
+    environment:
+      SECRET_KEY: bookstore-ship-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_shipping
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/security/', timeout=3)\""]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+
+  order-service:
+    build: ./order-service
+    restart: unless-stopped
+    ports:
+      - "18004:8000"
+    environment:
+      SECRET_KEY: bookstore-order-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_order
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+      CART_SERVICE_URL: http://cart-service:8000
+      BOOK_SERVICE_URL: http://product-service:8000
+      PAY_SERVICE_URL: http://pay-service:8000
+      SHIP_SERVICE_URL: http://ship-service:8000
+      ELECTRONICS_SERVICE_URL: http://product-service:8000
+      FASHION_SERVICE_URL: http://product-service:8000
+      TOY_SERVICE_URL: http://product-service:8000
+      GROCERY_SERVICE_URL: http://product-service:8000
+      FURNITURE_SERVICE_URL: http://product-service:8000
+      BEAUTY_SERVICE_URL: http://product-service:8000
+      SPORTS_SERVICE_URL: http://product-service:8000
+      PET_SERVICE_URL: http://product-service:8000
+      STATIONERY_SERVICE_URL: http://product-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      pay-service:
+        condition: service_healthy
+      ship-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health/security/', timeout=3)\""]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+
+  api-gateway:
+    build: ./api_gateway
+    restart: unless-stopped
+    ports:
+      - "18000:8000"
+    environment:
+      SECRET_KEY: bookstore-gateway-secret-key-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: bookstore_micro_gateway
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+      FRONTEND_URL: http://localhost:15173
+      SECURE_COOKIES: "False"
+      CART_SERVICE_URL: http://cart-service:8000
+      ORDER_SERVICE_URL: http://order-service:8000
+      PAY_SERVICE_URL: http://pay-service:8000
+      SHIP_SERVICE_URL: http://ship-service:8000
+      AI_SERVICE_URL: http://ai-service:8000
+      AUTH_SERVICE_URL: http://127.0.0.1:9
+      CUSTOMER_SERVICE_URL: http://127.0.0.1:9
+      BOOK_SERVICE_URL: http://product-service:8000
+      COMMENT_SERVICE_URL: http://product-service:8000
+      CATALOG_SERVICE_URL: http://127.0.0.1:9
+      STAFF_SERVICE_URL: http://127.0.0.1:9
+      MANAGER_SERVICE_URL: http://127.0.0.1:9
+      ELECTRONICS_SERVICE_URL: http://product-service:8000
+      FASHION_SERVICE_URL: http://product-service:8000
+      TOY_SERVICE_URL: http://product-service:8000
+      GROCERY_SERVICE_URL: http://product-service:8000
+      FURNITURE_SERVICE_URL: http://product-service:8000
+      BEAUTY_SERVICE_URL: http://product-service:8000
+      SPORTS_SERVICE_URL: http://product-service:8000
+      PET_SERVICE_URL: http://product-service:8000
+      STATIONERY_SERVICE_URL: http://product-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      pay-service:
+        condition: service_healthy
+      ship-service:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/', timeout=3)\""]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+
+  product-service:
+    build: ./product-service
+    restart: unless-stopped
+    ports:
+      - "18002:8000"
+    environment:
+      SECRET_KEY: bookstore-product-secret-2024
+      DEBUG: "True"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ecommerce_micro_product
+      DB_USER: bookstore_admin
+      DB_PASSWORD: 123456
+      AI_SERVICE_URL: http://ai-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    networks:
+      - bookstore-network
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)\""]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+
   frontend:
     build: ./Frontend
     restart: unless-stopped
@@ -233,463 +356,13 @@ services:
       - "15173:80"
     depends_on:
       api-gateway:
-        condition: service_started
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Auth Service (Centralized Authentication + JWT)
-  # Port: 18021 | DB: bookstore_micro_customer (shared identity store)
-  # ============================================================
-  auth-service:
-    build: ./auth-service
-    restart: unless-stopped
-    ports:
-      - "18021:8000"
-    environment:
-      - SECRET_KEY=bookstore-auth-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_customer
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - CART_SERVICE_URL=http://cart-service:8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      cart-service:
-        condition: service_started
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Customer Service (Profile + Customer Data)
-  # Port: 18001 | DB: bookstore_micro_customer
-  # ============================================================
-  customer-service:
-    build: ./customer-service
-    restart: unless-stopped
-    ports:
-      - "18001:8000"
-    environment:
-      - SECRET_KEY=bookstore-customer-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_customer
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - CART_SERVICE_URL=http://cart-service:8000
-    depends_on:
-      postgres:
         condition: service_healthy
     networks:
       - bookstore-network
 
-  # ============================================================
-  # Book Service (Book Catalog CRUD)
-  # Port: 18002 | DB: bookstore_micro_book
-  # ============================================================
-  book-service:
-    build: ./book-service
-    restart: unless-stopped
-    ports:
-      - "18002:8000"
-    environment:
-      - SECRET_KEY=bookstore-book-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_book
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Cart Service (Shopping Cart)
-  # Port: 18003 | DB: bookstore_micro_cart
-  # ============================================================
-  cart-service:
-    build: ./cart-service
-    restart: unless-stopped
-    ports:
-      - "18003:8000"
-    environment:
-      - SECRET_KEY=bookstore-cart-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_cart
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - BOOK_SERVICE_URL=http://book-service:8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Order Service (Order Orchestrator)
-  # Port: 18004 | DB: bookstore_micro_order
-  # ============================================================
-  order-service:
-    build: ./order-service
-    restart: unless-stopped
-    ports:
-      - "18004:8000"
-    environment:
-      - SECRET_KEY=bookstore-order-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_order
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - CART_SERVICE_URL=http://cart-service:8000
-      - BOOK_SERVICE_URL=http://book-service:8000
-      - ELECTRONICS_SERVICE_URL=http://electronics-service:8000
-      - FASHION_SERVICE_URL=http://fashion-service:8000
-      - TOY_SERVICE_URL=http://toy-service-v2:8000
-      - GROCERY_SERVICE_URL=http://grocery-service:8000
-      - FURNITURE_SERVICE_URL=http://furniture-service:8000
-      - BEAUTY_SERVICE_URL=http://beauty-service:8000
-      - SPORTS_SERVICE_URL=http://sports-service:8000
-      - PET_SERVICE_URL=http://pet-service:8000
-      - STATIONERY_SERVICE_URL=http://stationery-service:8000
-      - PAY_SERVICE_URL=http://pay-service:8000
-      - SHIP_SERVICE_URL=http://ship-service:8000
-      # [ASS6] SAGA_COORDINATOR_URL=http://saga-coordinator:8000
-      # [ASS6] EVENT_BUS_URL=amqp://rabbitmq:5672
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Payment Service
-  # Port: 18005 | DB: bookstore_micro_payment
-  # ============================================================
-  pay-service:
-    build: ./pay-service
-    restart: unless-stopped
-    ports:
-      - "18005:8000"
-    environment:
-      - SECRET_KEY=bookstore-pay-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_payment
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      # [ASS6] PAYMENT_GATEWAY_URL=https://payment-provider.com/api
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Shipping Service
-  # Port: 18006 | DB: bookstore_micro_shipping
-  # ============================================================
-  ship-service:
-    build: ./ship-service
-    restart: unless-stopped
-    ports:
-      - "18006:8000"
-    environment:
-      - SECRET_KEY=bookstore-ship-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_shipping
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      # [ASS6] SHIPPING_PROVIDER_URL=https://shipping-provider.com/api
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Comment / Rating Service
-  # Port: 18007 | DB: bookstore_micro_rating
-  # ============================================================
-  comment-service:
-    build: ./comment-service
-    restart: unless-stopped
-    ports:
-      - "18007:8000"
-    environment:
-      - SECRET_KEY=bookstore-comment-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_rating
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-      - BOOK_SERVICE_URL=http://book-service:8000
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Catalog Service (Category, Author, Publisher)
-  # Port: 18008 | DB: bookstore_micro_catalog
-  # ============================================================
-  catalog-service:
-    build: ./catalog-service
-    restart: unless-stopped
-    ports:
-      - "18008:8000"
-    environment:
-      - SECRET_KEY=bookstore-catalog-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_catalog
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Staff Service (Staff Account Management)
-  # Port: 18011 | DB: bookstore_micro_staff
-  # ============================================================
-  staff-service:
-    build: ./staff-service
-    restart: unless-stopped
-    ports:
-      - "18011:8000"
-    environment:
-      - SECRET_KEY=bookstore-staff-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_staff
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Manager Service (Promotions, Inventory, Coupons)
-  # Port: 18010 | DB: bookstore_micro_manager
-  # ============================================================
-  manager-service:
-    build: ./manager-service
-    restart: unless-stopped
-    ports:
-      - "18010:8000"
-    environment:
-      - SECRET_KEY=bookstore-manager-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_manager
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  # ============================================================
-  # Product Services (9 new product-type microservices)
-  # ============================================================
-  electronics-service:
-    build: ./electronics-service
-    restart: unless-stopped
-    ports:
-      - "18012:8000"
-    environment:
-      - SECRET_KEY=bookstore-electronics-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_electronics
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  fashion-service:
-    build: ./fashion-service
-    restart: unless-stopped
-    ports:
-      - "18013:8000"
-    environment:
-      - SECRET_KEY=bookstore-fashion-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_fashion
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  toy-service-v2:
-    build: ./toy-service
-    restart: unless-stopped
-    ports:
-      - "18014:8000"
-    environment:
-      - SECRET_KEY=bookstore-toy-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_toy
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  grocery-service:
-    build: ./grocery-service
-    restart: unless-stopped
-    ports:
-      - "18015:8000"
-    environment:
-      - SECRET_KEY=bookstore-grocery-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_grocery
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  furniture-service:
-    build: ./furniture-service
-    restart: unless-stopped
-    ports:
-      - "18016:8000"
-    environment:
-      - SECRET_KEY=bookstore-furniture-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_furniture
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  beauty-service:
-    build: ./beauty-service
-    restart: unless-stopped
-    ports:
-      - "18017:8000"
-    environment:
-      - SECRET_KEY=bookstore-beauty-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_beauty
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  sports-service:
-    build: ./sports-service
-    restart: unless-stopped
-    ports:
-      - "18018:8000"
-    environment:
-      - SECRET_KEY=bookstore-sports-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_sports
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  pet-service:
-    build: ./pet-service
-    restart: unless-stopped
-    ports:
-      - "18019:8000"
-    environment:
-      - SECRET_KEY=bookstore-pet-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_pet
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
-
-  stationery-service:
-    build: ./stationery-service
-    restart: unless-stopped
-    ports:
-      - "18020:8000"
-    environment:
-      - SECRET_KEY=bookstore-stationery-secret-2024
-      - DEBUG=True
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=bookstore_micro_stationery
-      - DB_USER=bookstore_admin
-      - DB_PASSWORD=123456
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - bookstore-network
 volumes:
   postgres_data:
   neo4j_data:
-
 
 networks:
   bookstore-network:
